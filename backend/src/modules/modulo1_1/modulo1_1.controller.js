@@ -171,9 +171,126 @@ export async function deletePolicy(req, res, next) {
 /** ============= BITÁCORA ============= */
 export async function listHistory(req, res, next) {
   try {
-    const labId = String(req.params.labId);
-    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
-    const offset = Math.max(Number(req.query.offset) || 0, 0);
-    return res.json(await M.listHistory(labId, { limit, offset }));
-  } catch (e) { return next(e); }
+    const labId = String(req.params.labId || "");
+    const { accion, desde, hasta, equipo_id, tipo, q, limit, offset } = req.query || {};
+
+    // soporta 'accion=a,b,c'
+    const accionParam =
+      typeof accion === "string" && accion.includes(",")
+        ? accion.split(",").map(s => s.trim()).filter(Boolean)
+        : accion;
+
+    const out = await M.listHistory(labId, {
+      accion: accionParam,
+      desde,
+      hasta,
+      equipo_id,
+      tipo,
+      q,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+    return res.json(out);
+  } catch (e) { next(e); }
+}
+
+/** ================ MODULO 1.1.3 — EQUIPOS ======================== */
+const UUID_RE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
+
+/** Respuesta de error uniforme */
+function send(res, code, message) {
+  return res.status(code).json({ error: { code, message } });
+}
+
+/** Mapeo simple de errores*/
+function sendError(res, e) {
+  if (e?.status) return send(res, e.status, e.message);
+  switch (e?.code) {
+    case "23505": return send(res, 409, "Registro duplicado");
+    case "23503": return send(res, 400, "Referencia inválida");
+    case "23514":
+    case "22P02": return send(res, 400, e.message || "Datos inválidos");
+    default: return send(res, 500, e?.message || "Error interno del servidor");
+  }
+}
+
+function getActorId(req) {
+  return (
+    req.user?.id ??
+    req.user?.user?.id ??
+    req.auth?.id ??
+    req.auth?.user?.id ??
+    null
+  );
+}
+
+// POST /labs/:labId/equipos
+export async function createEquipo(req, res) {
+  try {
+    const labId = String(req.params.labId || "");
+    if (!isUuid(labId)) return send(res, 400, "labId inválido");
+    const actorId = getActorId(req);
+    const out = await M.createEquipo(labId, req.body || {}, actorId);
+    return res.status(201).json(out);
+  } catch (e) { return sendError(res, e); }
+}
+
+// GET /labs/:labId/equipos
+export async function listEquipos(req, res) {
+  try {
+    const labId = String(req.params.labId || "");
+    if (!isUuid(labId)) return send(res, 400, "labId inválido");
+
+    const list = await M.listEquipos(labId);
+    return res.status(200).json(list);
+  } catch (e) {
+    return sendError(res, e);
+  }
+}
+
+// GET /labs/:labId/equipos/:equipoId
+export async function getEquipo(req, res) {
+  try {
+    const labId = String(req.params.labId || "");
+    const equipoId = String(req.params.equipoId || "");
+    if (!isUuid(labId) || !isUuid(equipoId)) return send(res, 400, "ids inválidos");
+
+    const row = await M.getEquipo(labId, equipoId);
+    if (!row) return send(res, 404, "Equipo no encontrado");
+    return res.status(200).json(row);
+  } catch (e) {
+    return sendError(res, e);
+  }
+}
+
+// PATCH /labs/:labId/equipos/:equipoId
+export async function updateEquipo(req, res) {
+  try {
+    const labId = String(req.params.labId || "");
+    const equipoId = String(req.params.equipoId || "");
+    if (!isUuid(labId) || !isUuid(equipoId)) return send(res, 400, "ids inválidos");
+
+    const actorId = getActorId(req);
+    const updated = await M.updateEquipo(labId, equipoId, req.body || {}, actorId);
+    if (!updated) return send(res, 404, "Equipo no encontrado");
+
+    const row = await M.getEquipo(labId, equipoId);
+    return res.status(200).json(row);
+  } catch (e) { return sendError(res, e); }
+}
+
+// DELETE /labs/:labId/equipos/:equipoId
+export async function deleteEquipo(req, res) {
+  try {
+    const labId = String(req.params.labId || "");
+    const equipoId = String(req.params.equipoId || "");
+    if (!isUuid(labId) || !isUuid(equipoId)) return send(res, 400, "ids inválidos");
+
+    const actorId = getActorId(req);
+    const ok = await M.deleteEquipo(labId, equipoId, actorId);
+    if (!ok) return send(res, 404, "Equipo no encontrado");
+    return res.status(200).json({ ok: true });
+  } catch (e) { return sendError(res, e); }
 }
