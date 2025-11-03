@@ -20,14 +20,15 @@ Auth: No
 Body:
 
 {
-  "nombre": "Ana López",
-  "correo": "ana.lopez@estudiante.tec.ac.cr",
-  "password": "Secreta123!",
+  "nombre": "Admin Labs",
+  "correo": "admin.labs@tec.ac.cr",
+  "password": "Secreta123",
   "codigo": "2024182540",
-  "rol": "estudiante",
-  "carrera": "Ingeniería en Computadores",
+  "rol": "admin",
+  "carrera": "Dirección de Laboratorios",
   "telefono": "88881234"
 }
+
 
 
 Respuestas: 201 Created con { user, message } / errores 400|409|422

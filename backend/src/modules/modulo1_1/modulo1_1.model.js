@@ -405,16 +405,65 @@ export async function deletePolicy(labId, policyId) {
 
 
 /* ==================== HISTORIAL ==================== */
-export async function listHistory(labId, { limit = 50, offset = 0 } = {}) {
-  const { rows } = await pool.query(
-    `SELECT ${COL.history.id} AS id, ${COL.history.userId} AS usuario_id,
-            ${COL.history.accion} AS accion, ${COL.history.detalle} AS detalle, ${COL.history.creado} AS creado_en
-       FROM ${TB.history}
-      WHERE ${COL.history.labId}=$1
-      ORDER BY ${COL.history.creado} DESC, ${COL.history.id} DESC
-      LIMIT $2 OFFSET $3`,
-    [labId, limit, offset]
-  );
+export async function listHistory(
+  labId,
+  { accion, desde, hasta, equipo_id, tipo, q, limit = 50, offset = 0 } = {}
+) {
+  // saneo de límites
+  limit = Number(limit);
+  offset = Number(offset);
+  if (!Number.isInteger(limit) || limit <= 0 || limit > 100) limit = 50;
+  if (!Number.isInteger(offset) || offset < 0) offset = 0;
+
+  const where = [`h.${COL.history.labId} = $1`];
+  const params = [labId];
+  let i = 2;
+
+  if (accion) {
+    if (Array.isArray(accion)) {
+      where.push(`h.${COL.history.accion} = ANY($${i})`);
+      params.push(accion);
+      i++;
+    } else {
+      where.push(`h.${COL.history.accion} = $${i}`);
+      params.push(String(accion));
+      i++;
+    }
+  }
+  if (desde) { where.push(`h.${COL.history.creado} >= $${i}`); params.push(desde); i++; }
+  if (hasta) { where.push(`h.${COL.history.creado} <  $${i}`); params.push(hasta); i++; }
+  if (equipo_id) {
+    where.push(`(h.${COL.history.detalle}->>'equipo_id') = $${i}`);
+    params.push(String(equipo_id)); i++;
+  }
+  if (tipo) {
+    // p.ej.: { tipo: "horario" } cuando registras cambios de 1.2.1
+    where.push(`(h.${COL.history.detalle}->>'tipo') = $${i}`);
+    params.push(String(tipo)); i++;
+  }
+  if (q) {
+    where.push(`h.${COL.history.detalle}::text ILIKE $${i}`);
+    params.push(`%${q}%`); i++;
+  }
+
+  const sql = `
+    SELECT
+      h.${COL.history.id}     AS id,
+      h.${COL.history.userId} AS usuario_id,
+      u.${COL.users.nombre}   AS usuario_nombre,
+      u.${COL.users.correo}   AS usuario_correo,
+      h.${COL.history.accion} AS accion,
+      h.${COL.history.detalle} AS detalle,
+      h.${COL.history.creado} AS creado_en
+    FROM ${TB.history} h
+    LEFT JOIN ${TB.users} u ON u.${COL.users.id} = h.${COL.history.userId}
+    WHERE ${where.join(" AND ")}
+    ORDER BY h.${COL.history.creado} DESC, h.${COL.history.id} DESC
+    LIMIT $${i} OFFSET $${i + 1}
+  `;
+  params.push(limit, offset);
+
+  const { rows } = await pool.query(sql, params);
   return rows;
 }
 
@@ -591,8 +640,8 @@ export async function updateEquipo(labId, equipoId, patch = {}, actorId = null) 
     }
   }
 
-  sets.push(`${COL.equipos.updated}=now()`);
   if (!sets.length) { const e = new Error("Nada que actualizar"); e.code = "22P02"; throw e; }
+  sets.push(`${COL.equipos.updated}=now()`);
 
   const sql = `UPDATE ${TB.equipos}
                   SET ${sets.join(", ")}

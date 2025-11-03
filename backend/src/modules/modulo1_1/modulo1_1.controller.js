@@ -171,11 +171,27 @@ export async function deletePolicy(req, res, next) {
 /** ============= BITÁCORA ============= */
 export async function listHistory(req, res, next) {
   try {
-    const labId = String(req.params.labId);
-    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
-    const offset = Math.max(Number(req.query.offset) || 0, 0);
-    return res.json(await M.listHistory(labId, { limit, offset }));
-  } catch (e) { return next(e); }
+    const labId = String(req.params.labId || "");
+    const { accion, desde, hasta, equipo_id, tipo, q, limit, offset } = req.query || {};
+
+    // soporta 'accion=a,b,c'
+    const accionParam =
+      typeof accion === "string" && accion.includes(",")
+        ? accion.split(",").map(s => s.trim()).filter(Boolean)
+        : accion;
+
+    const out = await M.listHistory(labId, {
+      accion: accionParam,
+      desde,
+      hasta,
+      equipo_id,
+      tipo,
+      q,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+    return res.json(out);
+  } catch (e) { next(e); }
 }
 
 /** ================ MODULO 1.1.3 — EQUIPOS ======================== */

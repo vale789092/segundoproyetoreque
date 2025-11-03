@@ -65,35 +65,3 @@ export async function deleteHorario(req, res) {
     return res.status(200).json({ ok: true });
   } catch (e) { return sendError(res, e); }
 }
-
-/* ==================== 1.2.5 — Bitácora ==================== */
-// GET /labs/:labId/bitacora
-export async function listBitacora(req, res) {
-  try {
-    const labId = String(req.params.labId || "");
-    if (!isUuid(labId)) return send(res, 400, "labId inválido");
-
-    // query params opcionales
-    const { accion, desde, hasta, equipo_id, tipo, q, limit, offset } = req.query || {};
-
-    // soporta 'accion=a,b,c'
-    const accionParam =
-      typeof accion === "string" && accion.includes(",")
-        ? accion.split(",").map((s) => s.trim()).filter(Boolean)
-        : accion;
-
-    const out = await M.listBitacora(labId, {
-      accion: accionParam,
-      desde,
-      hasta,
-      equipo_id,
-      tipo,
-      q,
-      limit: limit ? Number(limit) : undefined,
-      offset: offset ? Number(offset) : undefined,
-    });
-    return res.status(200).json(out);
-  } catch (e) {
-    return sendError(res, e);
-  }
-}
