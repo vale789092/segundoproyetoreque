@@ -1,3 +1,4 @@
+// backend/src/modules/modulo3_4/modulo3_4.model.js
 import { pool } from "../../db/index.js";
 
 /**
@@ -83,12 +84,12 @@ export async function getMyUsage({ userId, from, to, tipo = "all" }) {
   `;
 
   const { rows } = await pool.query(sql, params);
-  return rows.map(r => ({
+  return rows.map((r) => ({
     solicitud_id: r.solicitud_id,
     tipo_evento : r.tipo_evento,
     ts          : r.ts,
     estado      : r.estado,
     laboratorio : { id: r.laboratorio_id, nombre: r.laboratorio },
-    recurso     : { id: r.recurso_id, nombre: r.recurso }
+    recurso     : { id: r.recurso_id, nombre: r.recurso },
   }));
 }

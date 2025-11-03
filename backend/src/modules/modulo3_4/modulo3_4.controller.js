@@ -1,13 +1,7 @@
+// backend/src/modules/modulo3_4/modulo3_4.controller.js
 import { getMyUsage } from "./modulo3_4.model.js";
 import ExcelJS from "exceljs";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-import PDFDocument from "pdfkit";               // 👈 NUEVO
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-const SAVE_DIR   = path.resolve(__dirname, "../../historial_de_uso");
+import PDFDocument from "pdfkit";
 
 /** ================= Helpers ================= */
 const slug = (s = "") =>
@@ -94,11 +88,7 @@ export async function myUsageXlsxCtrl(req, res, next) {
     header.alignment = { horizontal: "center", vertical: "middle" };
     header.height = 22;
     header.eachCell((cell) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF2F4F7" }, // gris suave
-      };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F7" } };
       cell.border = {
         top: { style: "thin", color: { argb: "FFCDD2D7" } },
         left: { style: "thin", color: { argb: "FFCDD2D7" } },
@@ -153,33 +143,23 @@ export async function myUsageXlsxCtrl(req, res, next) {
       col.width = Math.min(Math.max(max + 2, col.width ?? 10), 60);
     });
 
-    // ===== Guardar en disco + responder (nombre legible)
-    await fs.mkdir(SAVE_DIR, { recursive: true });
-
+    // ===== Nombre legible y streaming directo
     const userLabel = userLabelFromReq(req, userId);
     const fromLbl   = fmtDateYMD(from);
     const toLbl     = fmtDateYMD(to);
     const tipoLbl   = slug(tipo || "all");
     const rowsLbl   = `${data.length}reg`;
+    const name      = `LabTEC-HistorialUso_${userLabel}_${fromLbl}-a-${toLbl}_${tipoLbl}_${rowsLbl}.xlsx`;
 
-    const name = `LabTEC-HistorialUso_${userLabel}_${fromLbl}-a-${toLbl}_${tipoLbl}_${rowsLbl}.xlsx`;
-    const filePath = path.join(SAVE_DIR, name);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
 
     const buffer = await wb.xlsx.writeBuffer();
-    await fs.writeFile(filePath, buffer);
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
-    res.status(200).end(buffer);
+    return res.status(200).end(buffer);
   } catch (e) {
     next(e);
   }
 }
-
-
 
 /** GET /history/my-usage.pdf */
 export async function myUsagePdfCtrl(req, res, next) {
@@ -188,14 +168,15 @@ export async function myUsagePdfCtrl(req, res, next) {
     const { from, to, tipo = "all" } = req.query;
     const rows = await getMyUsage({ userId, from, to, tipo });
 
-    await fs.mkdir(SAVE_DIR, { recursive: true });
-
     const userLabel = userLabelFromReq(req, userId);
     const fromLbl   = fmtDateYMD(from);
     const toLbl     = fmtDateYMD(to);
     const tipoLbl   = slug(tipo || "all");
     const name      = `LabTEC-HistorialUso_${userLabel}_${fromLbl}-a-${toLbl}_${tipoLbl}_${rows.length}reg.pdf`;
-    const filePath  = path.join(SAVE_DIR, name);
+
+    // ===== Encabezados y stream al navegador
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${name}"`);
 
     // ===== PDF
     const doc = new PDFDocument({
@@ -204,15 +185,7 @@ export async function myUsagePdfCtrl(req, res, next) {
       margins: { top: 32, right: 32, bottom: 36, left: 32 },
     });
 
-    const chunks = [];
-    doc.on("data", (c) => chunks.push(c));
-    doc.on("end", async () => {
-      const buffer = Buffer.concat(chunks);
-      await fs.writeFile(filePath, buffer);
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename="${name}"`);
-      res.status(200).end(buffer);
-    });
+    doc.pipe(res);
 
     // ===== fuentes
     const FONT_H = "Helvetica-Bold";
@@ -220,13 +193,12 @@ export async function myUsagePdfCtrl(req, res, next) {
     const FS_H   = 10;
     const FS_C   = 9;
 
-    // ===== helpers de texto (¡RegExp corregida!)
+    // ===== helpers de texto
     const ZWSP = "\u200B";
     const allowBreaks = (s) =>
       String(s ?? "")
-        .replace(/([\-\/_()\\])/g, `${ZWSP}$1`)                 // cortes en - / _ ( ) \
-        .replace(/([A-Za-z0-9]{16,})/g, m => m.replace(/(.{6})/g, `$1${ZWSP}`)); // rompe secuencias largas
-
+        .replace(/([\-\/_()\\])/g, `${ZWSP}$1`)
+        .replace(/([A-Za-z0-9]{16,})/g, (m) => m.replace(/(.{6})/g, `$1${ZWSP}`));
 
     const fmtTs = (iso) => {
       const d = new Date(iso);
@@ -234,25 +206,20 @@ export async function myUsagePdfCtrl(req, res, next) {
       const p = (n) => String(n).padStart(2, "0");
       return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
     };
-    const shortId = (id) => {
-      const s = String(id ?? "");
-      return s.length > 12 ? `${s.slice(0,6)}…${s.slice(-6)}` : s;
-    };
 
-    // ===== preparar datos (IDs completos; en lab/recurso el ID va debajo)
-    const data = rows.map(r => ({
-      solicitud   : String(r.solicitud_id ?? ""),                 // ID completo
+    // ===== preparar datos
+    const data = rows.map((r) => ({
+      solicitud   : String(r.solicitud_id ?? ""),
       evento      : r.tipo_evento ?? "",
       fecha       : fmtTs(r.ts),
       estado      : r.estado ?? "",
       laboratorio : r.laboratorio
-                      ? `${r.laboratorio.nombre ?? ""}\n${String(r.laboratorio.id ?? "")}`
-                      : "",
+        ? `${r.laboratorio.nombre ?? ""}\n${String(r.laboratorio.id ?? "")}`
+        : "",
       recurso     : r.recurso
-                      ? `${r.recurso.nombre ?? ""}\n${String(r.recurso.id ?? "")}`
-                      : "",
+        ? `${r.recurso.nombre ?? ""}\n${String(r.recurso.id ?? "")}`
+        : "",
     }));
-
 
     // ===== layout tabla
     const pageW  = doc.page.width;
@@ -269,33 +236,40 @@ export async function myUsagePdfCtrl(req, res, next) {
       { key: "laboratorio", label: "Laboratorio", weight: 1.6, min: 200, max: 280, align: "left"   },
       { key: "recurso",     label: "Recurso",     weight: 1.6, min: 200, max: 280, align: "left"   },
     ];
-    const totalWeight = cols.reduce((s,c)=>s+c.weight,0);
-    let widths = cols.map(c => Math.round((c.weight/totalWeight)*tableW));
-    widths = widths.map((w,i)=>Math.max(cols[i].min, Math.min(w, cols[i].max)));
-    const scale = tableW / widths.reduce((s,w)=>s+w,0);
-    widths = widths.map(w => Math.floor(w*scale));
-    cols.forEach((c,i)=>c.width = widths[i]);
+    const totalWeight = cols.reduce((s, c) => s + c.weight, 0);
+    let widths = cols.map((c) => Math.round((c.weight / totalWeight) * tableW));
+    widths = widths.map((w, i) => Math.max(cols[i].min, Math.min(w, cols[i].max)));
+    const scale = tableW / widths.reduce((s, w) => s + w, 0);
+    widths = widths.map((w) => Math.floor(w * scale));
+    cols.forEach((c, i) => (c.width = widths[i]));
 
     const padX = 6, padY = 4;
 
     const measureRowHeight = (row) => {
       let hMax = 0;
-      cols.forEach(c => {
+      cols.forEach((c) => {
         const txt = allowBreaks(row[c.key]);
-        const h = doc.font(FONT_B).fontSize(FS_C)
-          .heightOfString(txt, { width: c.width - padX*2, align: c.align });
+        const h = doc
+          .font(FONT_B)
+          .fontSize(FS_C)
+          .heightOfString(txt, { width: c.width - padX * 2, align: c.align });
         hMax = Math.max(hMax, h);
       });
-      return Math.max(hMax + padY*2, 18);
+      return Math.max(hMax + padY * 2, 18);
     };
 
     // ===== título + meta
     doc.font(FONT_H).fontSize(13).text("Historial de Uso – LabTEC", tableX, doc.y, { align: "left" });
     doc.moveDown(0.25);
-    doc.font(FONT_B).fontSize(9)
-      .text(`Usuario: ${userLabel}`, { continued: true }).text("   ", { continued: true })
-      .text(`Rango: ${fromLbl} a ${toLbl}`, { continued: true }).text("   ", { continued: true })
-      .text(`Tipo: ${tipoLbl}`, { continued: true }).text("   ", { continued: true })
+    doc
+      .font(FONT_B)
+      .fontSize(9)
+      .text(`Usuario: ${userLabel}`, { continued: true })
+      .text("   ", { continued: true })
+      .text(`Rango: ${fromLbl} a ${toLbl}`, { continued: true })
+      .text("   ", { continued: true })
+      .text(`Tipo: ${tipoLbl}`, { continued: true })
+      .text("   ", { continued: true })
       .text(`Registros: ${data.length}`);
     doc.moveDown(0.8);
 
@@ -305,23 +279,26 @@ export async function myUsagePdfCtrl(req, res, next) {
     const drawHeader = () => {
       const h = 20;
       doc.save().rect(tableX, tableTop, tableW, h).fill("#F2F4F7").restore();
-      doc.moveTo(tableX, tableTop + h).lineTo(tableX + tableW, tableTop + h)
-        .strokeColor("#CDD2D7").lineWidth(0.7).stroke();
+      doc
+        .moveTo(tableX, tableTop + h)
+        .lineTo(tableX + tableW, tableTop + h)
+        .strokeColor("#CDD2D7")
+        .lineWidth(0.7)
+        .stroke();
       doc.font(FONT_H).fontSize(FS_H).fillColor("#000");
       let x = tableX;
-      cols.forEach(c => {
-        doc.text(c.label, x + padX, tableTop + 4, { width: c.width - padX*2, align: "center" });
+      cols.forEach((c) => {
+        doc.text(c.label, x + padX, tableTop + 4, { width: c.width - padX * 2, align: "center" });
         x += c.width;
       });
     };
 
     const drawFooter = () => {
-      // NO mueve el cursor del flujo
       const oldX = doc.x, oldY = doc.y;
       const bottomY = doc.page.height - doc.page.margins.bottom + 14;
       doc.font(FONT_B).fontSize(8).fillColor("#6B7280");
       doc.text(`Generado: ${new Date().toLocaleString()}`, tableX, bottomY, { width: 300, align: "left" });
-      doc.text(`Página ${doc.page.number}`,           tableX, bottomY, { width: tableW, align: "right" });
+      doc.text(`Página ${doc.page.number}`, tableX, bottomY, { width: tableW, align: "right" });
       doc.x = oldX; doc.y = oldY; doc.fillColor("#000");
     };
 
@@ -329,46 +306,44 @@ export async function myUsagePdfCtrl(req, res, next) {
     let currentY = tableTop + 20;
     const bottomLimit = () => doc.page.height - doc.page.margins.bottom - 6;
 
-    // ===== filas + paginación SIN pageAdded
+    // ===== filas + paginación
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
       const rh  = measureRowHeight(row);
 
-      // si no cabe, footer -> addPage -> header -> reset cursor
       if (currentY + rh > bottomLimit()) {
-        drawFooter();                   // footer de la página actual
-        doc.addPage();                  // nueva página
+        drawFooter();
+        doc.addPage();
         tableTop = doc.y + 6;
         drawHeader();
         currentY = tableTop + 20;
       }
 
-      // zebra
       if (i % 2 === 1) {
         doc.save().rect(tableX, currentY, tableW, rh).fill("#FAFBFC").restore();
       }
 
-      // celdas
       let x = tableX;
-      cols.forEach(c => {
+      cols.forEach((c) => {
         const txt = allowBreaks(row[c.key]);
         doc.font(FONT_B).fontSize(FS_C).text(txt, x + padX, currentY + padY, {
-          width: c.width - padX*2,
+          width: c.width - padX * 2,
           align: c.align,
         });
         x += c.width;
       });
 
-      // línea separadora
-      doc.moveTo(tableX, currentY + rh).lineTo(tableX + tableW, currentY + rh)
-        .strokeColor("#E5E7EB").lineWidth(0.5).stroke();
+      doc
+        .moveTo(tableX, currentY + rh)
+        .lineTo(tableX + tableW, currentY + rh)
+        .strokeColor("#E5E7EB")
+        .lineWidth(0.5)
+        .stroke();
 
       currentY += rh;
     }
 
-    // footer de la última página
     drawFooter();
-
     doc.end();
   } catch (e) {
     next(e);

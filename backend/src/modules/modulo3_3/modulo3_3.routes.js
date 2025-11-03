@@ -1,25 +1,19 @@
 // backend/src/modules/modulo3_3/modulo3_3.routes.js
 import { Router } from "express";
-import { requireAuth } from "../../middleware/auth.js";
-import {
-  createRequestCtrl,
-  listMyRequestsCtrl,
-  getRequestCtrl,
-  deleteRequestCtrl,
-  setStatusCtrl,
-} from "./modulo3_3.controller.js";
+import { requireAuth, requireRole } from "../../middleware/auth.js";
+import * as C from "./modulo3_3.controller.js";
 
 const router = Router();
-
 router.use(requireAuth);
 
-// CRUD básico + seguimiento + cancelación
-router.post("/",           createRequestCtrl);        // Crear (pendiente)
-router.get("/",            listMyRequestsCtrl);       // Mis solicitudes (opc. ?estado)
-router.get("/:id",         getRequestCtrl);           // Ver detalle
-router.delete("/:id",      deleteRequestCtrl);        // Cancelar propia pendiente
+// CRUD básico usuario
+router.post("/", C.createRequestCtrl);
+router.get("/", C.listMyRequestsCtrl);
+router.get("/:id", C.getRequestCtrl);
+router.patch("/:id", C.updateRequestCtrl);     // <— NUEVO
+router.delete("/:id", C.deleteRequestCtrl);
 
-// Cambiar estado (técnico/admin)
-router.patch("/:id/status", setStatusCtrl);
+// Estado (técnico/admin)
+router.patch("/:id/status", requireRole(["tecnico","admin"]), C.setStatusCtrl);
 
 export default router;

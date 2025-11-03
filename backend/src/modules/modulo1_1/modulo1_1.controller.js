@@ -243,11 +243,16 @@ export async function listEquipos(req, res) {
     const labId = String(req.params.labId || "");
     if (!isUuid(labId)) return send(res, 400, "labId inválido");
 
-    const list = await M.listEquipos(labId);
+    const { tipo, estado_disp, reservable } = req.query || {};
+    const filters = {
+      tipo: tipo ?? undefined,
+      estado_disp: estado_disp ?? undefined,
+      reservable: reservable !== undefined ? reservable === "true" : undefined,
+    };
+
+    const list = await M.listEquipos(labId, filters);
     return res.status(200).json(list);
-  } catch (e) {
-    return sendError(res, e);
-  }
+  } catch (e) { return sendError(res, e); }
 }
 
 // GET /labs/:labId/equipos/:equipoId

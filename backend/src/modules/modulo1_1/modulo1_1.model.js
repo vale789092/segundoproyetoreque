@@ -552,30 +552,40 @@ export async function createEquipo(labId, payload = {}, actorId = null) {
   return rows[0];
 }
 
-export async function listEquipos(labId) {
-  const { rows } = await pool.query(
-    `SELECT
-       ${COL.equipos.id}         AS id,
-       ${COL.equipos.codigo}     AS codigo_inventario,
-       ${COL.equipos.nombre}     AS nombre,
-       ${COL.equipos.estadoOp}   AS estado_operativo,
-       ${COL.equipos.ultimoMant} AS fecha_ultimo_mantenimiento,
-       ${COL.equipos.tipo}       AS tipo,
-       ${COL.equipos.estadoDisp} AS estado_disp,
-       ${COL.equipos.cantTotal}  AS cantidad_total,
-       ${COL.equipos.cantDisp}   AS cantidad_disponible,
-       ${COL.equipos.ficha}      AS ficha_tecnica,
-       ${COL.equipos.fotos}      AS fotos,
-       ${COL.equipos.reservable} AS reservable,
-       ${COL.equipos.created}    AS created_at,
-       ${COL.equipos.updated}    AS updated_at
-     FROM ${TB.equipos}
-    WHERE ${COL.equipos.labId}=$1
-    ORDER BY ${COL.equipos.created} DESC, ${COL.equipos.id} ASC`,
-    [labId]
-  );
+export async function listEquipos(labId, { tipo, estado_disp, reservable } = {}) {
+  const where = [`${COL.equipos.labId}=$1`];
+  const params = [labId];
+  let i = 2;
+
+  if (tipo)        { where.push(`${COL.equipos.tipo}=$${i++}`);        params.push(tipo); }
+  if (estado_disp) { where.push(`${COL.equipos.estadoDisp}=$${i++}`);  params.push(estado_disp); }
+  if (reservable !== undefined) { where.push(`${COL.equipos.reservable}=$${i++}`); params.push(!!reservable); }
+
+  const sql = `
+    SELECT
+      ${COL.equipos.id}         AS id,
+      ${COL.equipos.codigo}     AS codigo_inventario,
+      ${COL.equipos.nombre}     AS nombre,
+      ${COL.equipos.estadoOp}   AS estado_operativo,
+      ${COL.equipos.ultimoMant} AS fecha_ultimo_mantenimiento,
+      ${COL.equipos.tipo}       AS tipo,
+      ${COL.equipos.estadoDisp} AS estado_disp,
+      ${COL.equipos.cantTotal}  AS cantidad_total,
+      ${COL.equipos.cantDisp}   AS cantidad_disponible,
+      ${COL.equipos.ficha}      AS ficha_tecnica,
+      ${COL.equipos.fotos}      AS fotos,
+      ${COL.equipos.reservable} AS reservable,
+      ${COL.equipos.created}    AS created_at,
+      ${COL.equipos.updated}    AS updated_at
+    FROM ${TB.equipos}
+    WHERE ${where.join(" AND ")}
+    ORDER BY ${COL.equipos.created} DESC, ${COL.equipos.id} ASC
+  `;
+
+  const { rows } = await pool.query(sql, params);
   return rows;
 }
+
 
 export async function getEquipo(labId, equipoId) {
   const { rows } = await pool.query(
