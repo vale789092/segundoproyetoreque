@@ -226,6 +226,8 @@ CREATE INDEX IF NOT EXISTS idx_hm_por_equipo       ON historial_mantenimientos(e
 CREATE INDEX IF NOT EXISTS idx_hm_por_laboratorio  ON historial_mantenimientos(laboratorio_id, creado_en DESC);
 CREATE INDEX IF NOT EXISTS idx_hm_por_fecha        ON historial_mantenimientos(creado_en);
 
+
+
 -- ============================================================
 -- MÓDULO 3.3 — Solicitud de Uso y Reservas
 -- ============================================================

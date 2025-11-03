@@ -1,0 +1,19 @@
+// backend/src/modules/modulo3_3/modulo3_3.routes.js
+import { Router } from "express";
+import { requireAuth, requireRole } from "../../middleware/auth.js";
+import * as C from "./modulo3_3.controller.js";
+
+const router = Router();
+router.use(requireAuth);
+
+// CRUD básico usuario
+router.post("/", C.createRequestCtrl);
+router.get("/", C.listMyRequestsCtrl);
+router.get("/:id", C.getRequestCtrl);
+router.patch("/:id", C.updateRequestCtrl);     // <— NUEVO
+router.delete("/:id", C.deleteRequestCtrl);
+
+// Estado (técnico/admin)
+router.patch("/:id/status", requireRole(["tecnico","admin"]), C.setStatusCtrl);
+
+export default router;

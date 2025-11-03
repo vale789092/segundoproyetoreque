@@ -1,12 +1,13 @@
 import { pool } from "../../db/index.js";
 
-/** Tablas/columnas según tu esquema */
+/** Tablas/columnas según esquema */
 const TB = {
   labs: "laboratorios",
   techLabs: "tecnicos_labs",
   users: "users",
   policies: "requisitos",
   history: "historial_laboratorio",
+  equipos: "equipos_fijos",
 };
 
 const COL = {
@@ -52,6 +53,23 @@ const COL = {
     , accion: "accion"
     , detalle: "detalle"
     , creado: "creado_en" },
+  equipos: {
+    id: "id",
+    labId: "laboratorio_id",
+    codigo: "codigo_inventario",
+    nombre: "nombre",
+    estadoOp: "estado_operativo",
+    ultimoMant: "fecha_ultimo_mant",
+    tipo: "tipo",
+    estadoDisp: "estado_disp",
+    cantTotal: "cantidad_total",
+    cantDisp: "cantidad_disponible",
+    ficha: "ficha_tecnica",
+    fotos: "fotos",
+    reservable: "reservable",
+    created: "created_at",
+    updated: "updated_at"
+  }
 };
 
 /* ==================== LABS ==================== */
@@ -387,15 +405,292 @@ export async function deletePolicy(labId, policyId) {
 
 
 /* ==================== HISTORIAL ==================== */
-export async function listHistory(labId, { limit = 50, offset = 0 } = {}) {
-  const { rows } = await pool.query(
-    `SELECT ${COL.history.id} AS id, ${COL.history.userId} AS usuario_id,
-            ${COL.history.accion} AS accion, ${COL.history.detalle} AS detalle, ${COL.history.creado} AS creado_en
-       FROM ${TB.history}
-      WHERE ${COL.history.labId}=$1
-      ORDER BY ${COL.history.creado} DESC, ${COL.history.id} DESC
-      LIMIT $2 OFFSET $3`,
-    [labId, limit, offset]
-  );
+export async function listHistory(
+  labId,
+  { accion, desde, hasta, equipo_id, tipo, q, limit = 50, offset = 0 } = {}
+) {
+  // saneo de límites
+  limit = Number(limit);
+  offset = Number(offset);
+  if (!Number.isInteger(limit) || limit <= 0 || limit > 100) limit = 50;
+  if (!Number.isInteger(offset) || offset < 0) offset = 0;
+
+  const where = [`h.${COL.history.labId} = $1`];
+  const params = [labId];
+  let i = 2;
+
+  if (accion) {
+    if (Array.isArray(accion)) {
+      where.push(`h.${COL.history.accion} = ANY($${i})`);
+      params.push(accion);
+      i++;
+    } else {
+      where.push(`h.${COL.history.accion} = $${i}`);
+      params.push(String(accion));
+      i++;
+    }
+  }
+  if (desde) { where.push(`h.${COL.history.creado} >= $${i}`); params.push(desde); i++; }
+  if (hasta) { where.push(`h.${COL.history.creado} <  $${i}`); params.push(hasta); i++; }
+  if (equipo_id) {
+    where.push(`(h.${COL.history.detalle}->>'equipo_id') = $${i}`);
+    params.push(String(equipo_id)); i++;
+  }
+  if (tipo) {
+    // p.ej.: { tipo: "horario" } cuando registras cambios de 1.2.1
+    where.push(`(h.${COL.history.detalle}->>'tipo') = $${i}`);
+    params.push(String(tipo)); i++;
+  }
+  if (q) {
+    where.push(`h.${COL.history.detalle}::text ILIKE $${i}`);
+    params.push(`%${q}%`); i++;
+  }
+
+  const sql = `
+    SELECT
+      h.${COL.history.id}     AS id,
+      h.${COL.history.userId} AS usuario_id,
+      u.${COL.users.nombre}   AS usuario_nombre,
+      u.${COL.users.correo}   AS usuario_correo,
+      h.${COL.history.accion} AS accion,
+      h.${COL.history.detalle} AS detalle,
+      h.${COL.history.creado} AS creado_en
+    FROM ${TB.history} h
+    LEFT JOIN ${TB.users} u ON u.${COL.users.id} = h.${COL.history.userId}
+    WHERE ${where.join(" AND ")}
+    ORDER BY h.${COL.history.creado} DESC, h.${COL.history.id} DESC
+    LIMIT $${i} OFFSET $${i + 1}
+  `;
+  params.push(limit, offset);
+
+  const { rows } = await pool.query(sql, params);
   return rows;
+}
+
+/* --------------------------------------- */
+/* 1.1.3 Equipos fijos (recursos)          */
+/* --------------------------------------- */
+
+export async function assertLabExists(labId) {
+  const { rowCount } = await pool.query(
+    `SELECT 1 FROM ${TB.labs} WHERE ${COL.labs.id}=$1`, [labId]
+  );
+  if (!rowCount) {
+    const err = new Error("Laboratorio no existe"); err.code = "23503"; throw err;
+  }
+}
+
+const ALLOWED_ESTADO_OP = new Set(["operativo","fuera_servicio","baja"]);
+const ALLOWED_TIPO      = new Set(["equipo","material","software"]);
+const ALLOWED_EDISP     = new Set(["disponible","reservado","en_mantenimiento","inactivo"]);
+
+export async function createEquipo(labId, payload = {}, actorId = null) {
+  let {
+    codigo_inventario,
+    nombre,
+    estado_operativo,
+    fecha_ultimo_mantenimiento = null,
+
+    tipo = "equipo",
+    estado_disp = "inactivo",
+    cantidad_total = 1,
+    cantidad_disponible = null,
+    ficha_tecnica = null,
+    fotos = null,
+    reservable = true,
+  } = payload;
+
+  if (!codigo_inventario || !nombre || !estado_operativo) {
+    const e = new Error("codigo_inventario, nombre y estado_operativo son requeridos");
+    e.code = "22P02";
+    throw e;
+  }
+  if (!ALLOWED_ESTADO_OP.has(String(estado_operativo))) { const e = new Error("estado_operativo inválido"); e.code="22P02"; throw e; }
+  if (tipo && !ALLOWED_TIPO.has(String(tipo)))          { const e = new Error("tipo inválido");             e.code="22P02"; throw e; }
+  if (estado_disp && !ALLOWED_EDISP.has(String(estado_disp))) { const e = new Error("estado_disp inválido"); e.code="22P02"; throw e; }
+
+  if (cantidad_disponible == null) cantidad_disponible = cantidad_total;
+
+  if (typeof ficha_tecnica === "string") { try { ficha_tecnica = JSON.parse(ficha_tecnica); } catch { ficha_tecnica = null; } }
+  if (typeof fotos === "string")         { try { fotos = JSON.parse(fotos); }               catch { fotos = null; } }
+
+  const { rows } = await pool.query(
+    `INSERT INTO ${TB.equipos}
+      (${COL.equipos.labId}, ${COL.equipos.codigo}, ${COL.equipos.nombre},
+       ${COL.equipos.estadoOp}, ${COL.equipos.ultimoMant},
+       ${COL.equipos.tipo}, ${COL.equipos.estadoDisp},
+       ${COL.equipos.cantTotal}, ${COL.equipos.cantDisp},
+       ${COL.equipos.ficha}, ${COL.equipos.fotos}, ${COL.equipos.reservable})
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     RETURNING ${COL.equipos.id} AS id,
+               ${COL.equipos.created} AS created_at,
+               ${COL.equipos.updated} AS updated_at`,
+    [
+      labId,
+      codigo_inventario,
+      nombre,
+      estado_operativo,
+      fecha_ultimo_mantenimiento,
+      tipo,
+      estado_disp,
+      cantidad_total,
+      cantidad_disponible,
+      ficha_tecnica,
+      fotos,
+      reservable,
+    ]
+  );
+  const nuevoId = rows[0].id;
+
+  // Bitácora: alta_equipo con usuario_id
+  await pool.query(
+    `INSERT INTO ${TB.history} (${COL.history.labId}, ${COL.history.userId}, ${COL.history.accion}, ${COL.history.detalle})
+     VALUES ($1,$2,'alta_equipo',$3)`,
+    [labId, actorId, JSON.stringify({ equipo_id: nuevoId, codigo_inventario })]
+  );
+
+  return rows[0];
+}
+
+export async function listEquipos(labId, { tipo, estado_disp, reservable } = {}) {
+  const where = [`${COL.equipos.labId}=$1`];
+  const params = [labId];
+  let i = 2;
+
+  if (tipo)        { where.push(`${COL.equipos.tipo}=$${i++}`);        params.push(tipo); }
+  if (estado_disp) { where.push(`${COL.equipos.estadoDisp}=$${i++}`);  params.push(estado_disp); }
+  if (reservable !== undefined) { where.push(`${COL.equipos.reservable}=$${i++}`); params.push(!!reservable); }
+
+  const sql = `
+    SELECT
+      ${COL.equipos.id}         AS id,
+      ${COL.equipos.codigo}     AS codigo_inventario,
+      ${COL.equipos.nombre}     AS nombre,
+      ${COL.equipos.estadoOp}   AS estado_operativo,
+      ${COL.equipos.ultimoMant} AS fecha_ultimo_mantenimiento,
+      ${COL.equipos.tipo}       AS tipo,
+      ${COL.equipos.estadoDisp} AS estado_disp,
+      ${COL.equipos.cantTotal}  AS cantidad_total,
+      ${COL.equipos.cantDisp}   AS cantidad_disponible,
+      ${COL.equipos.ficha}      AS ficha_tecnica,
+      ${COL.equipos.fotos}      AS fotos,
+      ${COL.equipos.reservable} AS reservable,
+      ${COL.equipos.created}    AS created_at,
+      ${COL.equipos.updated}    AS updated_at
+    FROM ${TB.equipos}
+    WHERE ${where.join(" AND ")}
+    ORDER BY ${COL.equipos.created} DESC, ${COL.equipos.id} ASC
+  `;
+
+  const { rows } = await pool.query(sql, params);
+  return rows;
+}
+
+
+export async function getEquipo(labId, equipoId) {
+  const { rows } = await pool.query(
+    `SELECT
+       ${COL.equipos.id}         AS id,
+       ${COL.equipos.codigo}     AS codigo_inventario,
+       ${COL.equipos.nombre}     AS nombre,
+       ${COL.equipos.estadoOp}   AS estado_operativo,
+       ${COL.equipos.ultimoMant} AS fecha_ultimo_mantenimiento,
+       ${COL.equipos.tipo}       AS tipo,
+       ${COL.equipos.estadoDisp} AS estado_disp,
+       ${COL.equipos.cantTotal}  AS cantidad_total,
+       ${COL.equipos.cantDisp}   AS cantidad_disponible,
+       ${COL.equipos.ficha}      AS ficha_tecnica,
+       ${COL.equipos.fotos}      AS fotos,
+       ${COL.equipos.reservable} AS reservable,
+       ${COL.equipos.created}    AS created_at,
+       ${COL.equipos.updated}    AS updated_at
+     FROM ${TB.equipos}
+    WHERE ${COL.equipos.labId}=$1 AND ${COL.equipos.id}=$2`,
+    [labId, equipoId]
+  );
+  return rows[0] || null;
+}
+
+export async function updateEquipo(labId, equipoId, patch = {}, actorId = null) {
+  const sets = [];
+  const vals = [];
+  let i = 1;
+
+  if (Object.prototype.hasOwnProperty.call(patch, "estado_operativo")) {
+    if (!ALLOWED_ESTADO_OP.has(String(patch.estado_operativo))) { const e = new Error("estado_operativo inválido"); e.code="22P02"; throw e; }
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "tipo")) {
+    if (!ALLOWED_TIPO.has(String(patch.tipo))) { const e = new Error("tipo inválido"); e.code="22P02"; throw e; }
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "estado_disp")) {
+    if (!ALLOWED_EDISP.has(String(patch.estado_disp))) { const e = new Error("estado_disp inválido"); e.code="22P02"; throw e; }
+  }
+
+  if (typeof patch.ficha_tecnica === "string") { try { patch.ficha_tecnica = JSON.parse(patch.ficha_tecnica); } catch {} }
+  if (typeof patch.fotos === "string")         { try { patch.fotos = JSON.parse(patch.fotos); }               catch {} }
+
+  const map = {
+    codigo_inventario: COL.equipos.codigo,
+    nombre: COL.equipos.nombre,
+    estado_operativo: COL.equipos.estadoOp,
+    fecha_ultimo_mantenimiento: COL.equipos.ultimoMant,
+    tipo: COL.equipos.tipo,
+    estado_disp: COL.equipos.estadoDisp,
+    cantidad_total: COL.equipos.cantTotal,
+    cantidad_disponible: COL.equipos.cantDisp,
+    ficha_tecnica: COL.equipos.ficha,
+    fotos: COL.equipos.fotos,
+    reservable: COL.equipos.reservable,
+  };
+
+  for (const k of Object.keys(map)) {
+    if (Object.prototype.hasOwnProperty.call(patch, k)) {
+      sets.push(`${map[k]}=$${i++}`);
+      vals.push(patch[k]);
+    }
+  }
+
+  if (!sets.length) { const e = new Error("Nada que actualizar"); e.code = "22P02"; throw e; }
+  sets.push(`${COL.equipos.updated}=now()`);
+
+  const sql = `UPDATE ${TB.equipos}
+                  SET ${sets.join(", ")}
+                WHERE ${COL.equipos.labId}=$${i} AND ${COL.equipos.id}=$${i + 1}
+                RETURNING ${COL.equipos.id} AS id,
+                          ${COL.equipos.created} AS created_at,
+                          ${COL.equipos.updated} AS updated_at`;
+  vals.push(labId, equipoId);
+
+  const { rows } = await pool.query(sql, vals);
+  if (!rows[0]) return null;
+
+  // Bitácora: si toca estado -> 'cambio_estado_equipo', si no -> 'actualizacion_equipo'
+  const tocaEstado = Object.prototype.hasOwnProperty.call(patch, "estado_operativo")
+                  || Object.prototype.hasOwnProperty.call(patch, "estado_disp");
+  const accion = tocaEstado ? "cambio_estado_equipo" : "actualizacion_equipo";
+
+  await pool.query(
+    `INSERT INTO ${TB.history} (${COL.history.labId}, ${COL.history.userId}, ${COL.history.accion}, ${COL.history.detalle})
+     VALUES ($1,$2,$3,$4)`,
+    [labId, actorId, accion, JSON.stringify({ equipo_id: equipoId, patch })]
+  );
+
+  return rows[0];
+}
+
+export async function deleteEquipo(labId, equipoId, actorId = null) {
+  const { rowCount } = await pool.query(
+    `DELETE FROM ${TB.equipos}
+      WHERE ${COL.equipos.labId}=$1 AND ${COL.equipos.id}=$2`,
+    [labId, equipoId]
+  );
+
+  if (rowCount) {
+    await pool.query(
+      `INSERT INTO ${TB.history} (${COL.history.labId}, ${COL.history.userId}, ${COL.history.accion}, ${COL.history.detalle})
+       VALUES ($1,$2,'actualizacion_equipo',$3)`,
+      [labId, actorId, JSON.stringify({ equipo_id: equipoId, op: "eliminado" })]
+    );
+  }
+  return !!rowCount;
 }

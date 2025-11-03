@@ -29,4 +29,11 @@ labsRouter.delete("/:labId/policies/:policyId", requireRole(["admin"]), C.delete
 /** BITÁCORA */
 labsRouter.get("/:labId/history",requireRole(["admin"]), C.listHistory);
 
+// 1.1.3 Recursos fijos
+labsRouter.post("/:labId/equipos", requireRole(["admin"]), C.createEquipo);
+labsRouter.get("/:labId/equipos", C.listEquipos);
+labsRouter.get("/:labId/equipos/:equipoId", C.getEquipo);
+labsRouter.patch("/:labId/equipos/:equipoId", requireRole(["admin"]), C.updateEquipo);
+labsRouter.delete("/:labId/equipos/:equipoId", requireRole(["admin"]), C.deleteEquipo);
+
 export default labsRouter;
