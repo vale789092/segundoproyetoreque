@@ -11,6 +11,8 @@ import NavCollapse from "./NavCollapse";
 // (opcional rol) helpers para leer el usuario almacenado
 import { getUser } from "@/services/storage";
 
+
+
 function filterByRole<T extends { roles?: string[]; children?: any[] }>(
   data: T[],
   role?: string

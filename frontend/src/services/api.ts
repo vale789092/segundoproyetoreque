@@ -1,11 +1,8 @@
 import axios from "axios";
-import { getToken } from "./storage";
-
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
+import { getToken, clearToken, clearUser } from "./storage"; 
 
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 15000,
+  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api",
 });
 
 api.interceptors.request.use((cfg) => {
@@ -14,11 +11,20 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
-export function parseError(err: any): string {
-  if (err?.response?.data?.message) return String(err.response.data.message);
-  if (err?.response?.data?.error) return String(err.response.data.error);
-  if (err?.message) return String(err.message);
-  return "Error desconocido";
-}
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    if (err?.response?.status === 401) {
+      clearToken();
+      clearUser();
+      window.location.href = "/auth/login";
+    }
+    return Promise.reject(err);
+  }
+);
 
-export default api; // <— default separado
+export default api;
+
+// (si exportas helpers):
+export const parseError = (e: any) =>
+  e?.response?.data?.message ?? e?.message ?? "Error";

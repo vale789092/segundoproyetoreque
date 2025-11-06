@@ -1,81 +1,85 @@
+// src/routes/Router.tsx
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import  { lazy } from 'react';
+import { lazy } from 'react';
 import { Navigate, createBrowserRouter } from "react-router";
 import Loadable from 'src/layouts/full/shared/loadable/Loadable';
 
-
-
-
-/* ***Layouts**** */
-const FullLayout = Loadable(lazy(() => import('../layouts/full/FullLayout')));
+const FullLayout  = Loadable(lazy(() => import('../layouts/full/FullLayout')));
 const BlankLayout = Loadable(lazy(() => import('../layouts/blank/BlankLayout')));
+const Protected   = Loadable(lazy(() => import('./Protected')));
 
 // Dashboard
-const Dashboard = Loadable(lazy(() => import('../views/dashboards/Dashboard')));
+const Dashboard   = Loadable(lazy(() => import('../views/dashboards/Dashboard')));
 
 // Operaciones
-const Reservas      = Loadable(lazy(() => import('../views/operacion/Reservas')));
-const Prestamos     = Loadable(lazy(() => import('../views/operacion/Prestamos')));
-const Devoluciones  = Loadable(lazy(() => import('../views/operacion/Devoluciones')));
-const Inventario    = Loadable(lazy(() => import('../views/operacion/Inventario')));
-const Reportes      = Loadable(lazy(() => import('../views/operacion/Reportes')));
+const Reservas     = Loadable(lazy(() => import('../views/operacion/Reservas')));
+const Prestamos    = Loadable(lazy(() => import('../views/operacion/Prestamos')));
+const Devoluciones = Loadable(lazy(() => import('../views/operacion/Devoluciones')));
+const Inventario   = Loadable(lazy(() => import('../views/operacion/Inventario')));
+const Reportes     = Loadable(lazy(() => import('../views/operacion/Reportes')));
 
-// utilities
+// Utilities
 const Typography = Loadable(lazy(() => import("../views/typography/Typography")));
-const Table = Loadable(lazy(() => import("../views/tables/Table")));
-const Alert = Loadable(lazy(() => import("../views/alerts/Alerts")));
-const Perfil = Loadable(lazy(() => import("../views/perfil/Perfil")));
+const Table      = Loadable(lazy(() => import("../views/tables/Table")));
+const Alert      = Loadable(lazy(() => import("../views/alerts/Alerts")));
+const Perfil     = Loadable(lazy(() => import("../views/perfil/Perfil")));
 
-// icons
+// Icons
 const Solar = Loadable(lazy(() => import("../views/icons/Solar")));
 
-// authentication
-const Login = Loadable(lazy(() => import('../views/auth/login/Login')));
-const Register = Loadable(lazy(() => import('../views/auth/register/Register')));
+// Auth
+const Login      = Loadable(lazy(() => import('../views/auth/login/Login')));
+const Register   = Loadable(lazy(() => import('../views/auth/register/Register')));
 const SamplePage = Loadable(lazy(() => import('../views/sample-page/SamplePage')));
-const Error = Loadable(lazy(() => import('../views/auth/error/Error')));
+const ErrorPage  = Loadable(lazy(() => import('../views/auth/error/Error')));
 
 const Router = [
+  // Área protegida
   {
     path: '/',
-    element: <FullLayout />,
+    element: (
+      <Protected>
+        <FullLayout />
+      </Protected>
+    ),
     children: [
-      { path: '/', exact: true, element: <Dashboard/> },
+      { path: '/',               exact: true, element: <Dashboard /> },
 
-      // Rutas de operación
-      { path: '/app/reservas', element: <Reservas /> },
-      { path: '/app/prestamos', element: <Prestamos /> },
-      { path: '/app/devoluciones', element: <Devoluciones /> },
-      { path: '/app/inventario', element: <Inventario /> },
-      { path: '/app/reportes', element: <Reportes /> },
+      // Operación
+      { path: '/app/reservas',      element: <Reservas /> },
+      { path: '/app/prestamos',     element: <Prestamos /> },
+      { path: '/app/devoluciones',  element: <Devoluciones /> },
+      { path: '/app/inventario',    element: <Inventario /> },
+      { path: '/app/reportes',      element: <Reportes /> },
 
-      // Perfil real
-      { path: '/app/perfil', element: <Perfil /> },
+      // Perfil
+      { path: '/app/perfil',        element: <Perfil /> },
 
-      // utilidades (si las quieres mantener)
+      // Utilities (si las mantienes)
       { path: '/ui/typography', exact: true, element: <Typography/> },
-      { path: '/ui/table', exact: true, element: <Table/> },
-      { path: '/ui/alert', exact: true, element: <Alert/> },
-      { path: '/icons/solar', exact: true, element: <Solar /> },
-      { path: '/sample-page', exact: true, element: <SamplePage /> },
+      { path: '/ui/table',      exact: true, element: <Table/> },
+      { path: '/ui/alert',      exact: true, element: <Alert/> },
+      { path: '/icons/solar',   exact: true, element: <Solar /> },
+      { path: '/sample-page',   exact: true, element: <SamplePage /> },
+
       { path: '*', element: <Navigate to="/auth/404" /> },
     ],
   },
+
+  // Auth público
   {
     path: '/',
     element: <BlankLayout />,
     children: [
-      { path: '/auth/login', element: <Login /> },
+      { path: '/auth/login',    element: <Login /> },
       { path: '/auth/register', element: <Register /> },
-      { path: '404', element: <Error /> },
-      { path: '/auth/404', element: <Error /> },
-      { path: '*', element: <Navigate to="/auth/404" /> },
+      { path: '/auth/404',      element: <ErrorPage /> },
+      { path: '404',            element: <ErrorPage /> },
+      { path: '*',              element: <Navigate to="/auth/404" /> },
     ],
-  }
-  ,
+  },
 ];
 
-const router = createBrowserRouter(Router)
-
+const router = createBrowserRouter(Router);
 export default router;
