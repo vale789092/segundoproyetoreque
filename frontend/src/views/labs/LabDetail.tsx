@@ -1,12 +1,28 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { Card, Tabs } from "flowbite-react";
+import { Card, Tabs, Badge } from "flowbite-react";
 import { getLab } from "@/services/labs";
+import { listPolicies } from "@/services/labs";
 
 export default function LabDetail() {
+  type RouteParams = { id: string };
   const { id = "" } = useParams();
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string|null>(null);
+  const [pols, setPols] = useState<any[]>([]);
+  const [loadingPols, setLoadingPols] = useState(false);
+  const { id: labId } = useParams<RouteParams>();
+
+  useEffect(() => {
+    if (!labId) return;
+    (async () => {
+      setLoadingPols(true);
+      try {
+        const rows = await listPolicies(labId);
+        setPols(rows);
+      } finally { setLoadingPols(false); }
+    })();
+  }, [labId]);
 
   useEffect(() => {
     (async () => {
@@ -38,7 +54,29 @@ export default function LabDetail() {
         </Tabs.Item>
         <Tabs.Item title="Políticas">
           {/* CRUD de requisitos */}
-          <pre className="text-xs">{JSON.stringify(data.policies, null, 2)}</pre>
+          <div className="space-y-3">
+    {loadingPols ? <p>Cargando políticas…</p> :
+      pols.length === 0 ? <p className="text-sm text-slate-500">Este laboratorio no tiene políticas publicadas.</p> :
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {pols.map(p => (
+          <Card key={p.id} className="rounded-2xl">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">{p.nombre}</h4>
+              <Badge color={p.tipo === "seguridad" ? "red" : p.tipo === "academico" ? "indigo" : "gray"}>
+                {p.tipo}
+              </Badge>
+            </div>
+            {p.descripcion && <p className="text-sm text-slate-600">{p.descripcion}</p>}
+            <div className="text-xs text-slate-500 space-x-2">
+              <Badge color={p.obligatorio ? "blue" : "gray"}>{p.obligatorio ? "Obligatorio" : "Opcional"}</Badge>
+              {p.vigente_desde && <span>Desde: {new Date(p.vigente_desde).toLocaleDateString()}</span>}
+              {p.vigente_hasta && <span>Hasta: {new Date(p.vigente_hasta).toLocaleDateString()}</span>}
+            </div>
+          </Card>
+        ))}
+      </div>
+    }
+  </div>
         </Tabs.Item>
         <Tabs.Item title="Equipos">
           {/* Lista de /labs/:id/equipos */}

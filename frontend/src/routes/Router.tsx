@@ -38,6 +38,9 @@ const ErrorPage  = Loadable(lazy(() => import('../views/auth/error/Error')));
 const LabDetail = Loadable(lazy(() => import('../views/labs/LabDetail')));
 const MisSolicitudes = Loadable(lazy(() => import('../views/operacion/MisSolicitudes')));
 
+// Historial (nuevo, en src/historial/)
+const MyHistory = Loadable(lazy(() => import('../historial/MyHistory')));
+
 const Router = [
   // Área protegida
   {
@@ -57,6 +60,9 @@ const Router = [
       { path: '/app/devoluciones',  element: <Devoluciones /> },
       { path: '/app/inventario',    element: <Inventario /> },
       { path: '/app/reportes',      element: <Reportes /> },
+
+      // Historial (nuevo)
+      { path: '/app/historial',        element: <MyHistory /> },
 
       // Perfil
       { path: '/app/perfil',        element: <Perfil /> },

@@ -93,3 +93,27 @@ export async function getMyUsage({ userId, from, to, tipo = "all" }) {
     recurso     : { id: r.recurso_id, nombre: r.recurso },
   }));
 }
+
+export async function listMyHistory({ usuario_id, desde, hasta, tipo }) {
+  const params = [usuario_id];
+  const ranges = [];
+  if (desde) { params.push(desde); ranges.push(`h.creado_en >= $${params.length}`); }
+  if (hasta) { params.push(hasta); ranges.push(`h.creado_en <  $${params.length}`); }
+
+  // tipo opcional: 'reserva','prestamo','devolucion','capacitacion','otro'
+  const tipoFilter = tipo ? `AND (h.detalle->>'tipo') = $${params.push(tipo)}` : "";
+
+  const where = [`h.usuario_id = $1`, ...ranges];
+
+  const { rows } = await pool.query(
+    `SELECT
+       h.id, h.laboratorio_id, h.usuario_id, h.accion, h.detalle, h.creado_en,
+       l.nombre AS lab_nombre
+     FROM historial_laboratorio h
+     JOIN laboratorios l ON l.id = h.laboratorio_id
+    WHERE ${where.join(" AND ")} ${tipoFilter}
+    ORDER BY h.creado_en DESC, h.id DESC`,
+    params
+  );
+  return rows;
+}

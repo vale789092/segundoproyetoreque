@@ -24,6 +24,7 @@ const SidebarContent: SidebarSection[] = [
     children: [
       { id: "reservas",     title: "Reservas",     to: "/app/reservas",     roles: ["estudiante","profesor","tecnico","admin"] },
       { id: "mis-solicitudes", title: "Mis solicitudes", to: "/app/mis-solicitudes", roles: ["estudiante","profesor","tecnico","admin"] },
+      { id: "mi-historial", title: "Mi historial", to: "/app/historial", roles: ["estudiante","profesor"] },
       { id: "prestamos",    title: "Préstamos",    to: "/app/prestamos",    roles: ["profesor","tecnico","admin"] },
       { id: "devoluciones", title: "Devoluciones", to: "/app/devoluciones", roles: ["profesor","tecnico","admin"] },
       { id: "inventario",   title: "Inventario",   to: "/app/inventario",   roles: ["tecnico","admin"] },

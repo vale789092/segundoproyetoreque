@@ -154,3 +154,17 @@ export async function listLabHorarios(labId: string, fecha: string) {
   const { data } = await api.get(`/labs/${labId}/horarios?fecha=${fecha}`);
   return data as LabSlot[];
 }
+
+export async function listPolicies(labId: string) {
+  const { data } = await api.get(`/labs/${labId}/policies`);
+  return data as Array<{
+    id: string;
+    nombre: string;
+    descripcion: string | null;
+    tipo: "academico" | "seguridad" | "otro";
+    obligatorio: boolean;
+    vigente_desde: string | null;
+    vigente_hasta: string | null;
+  }>;
+}
+

@@ -2,6 +2,7 @@
 import { getMyUsage } from "./modulo3_4.model.js";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
+import { listMyHistory } from "./modulo3_4.model.js";
 
 /** ================= Helpers ================= */
 const slug = (s = "") =>
@@ -348,4 +349,13 @@ export async function myUsagePdfCtrl(req, res, next) {
   } catch (e) {
     next(e);
   }
+}
+
+export async function listMyHistoryCtrl(req, res, next) {
+  try {
+    const usuario_id = req.user.id;
+    const { desde, hasta, tipo } = req.query || {};
+    const rows = await listMyHistory({ usuario_id, desde, hasta, tipo });
+    return res.json(rows);
+  } catch (e) { next(e); }
 }
