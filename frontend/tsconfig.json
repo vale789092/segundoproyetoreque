@@ -2,7 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "src/*": ["src/*"]
+      "@/*": ["src/*"],   // ← nuevo alias
+      "src/*": ["src/*"]  // ← el que ya usabas
     },
     "target": "ES2020",
     "useDefineForClassFields": true,
@@ -22,7 +23,10 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* (opcional) asegura tipos de Vite/SVG como componentes */
+    "types": ["vite/client"]
   },
   "include": ["src"]
 }

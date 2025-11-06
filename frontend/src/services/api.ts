@@ -1,15 +1,24 @@
 import axios from "axios";
+import { getToken } from "./storage";
+
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000",
-  withCredentials: false, // usamos Bearer, no cookies httpOnly
+  baseURL: API_URL,
+  timeout: 15000,
 });
 
-// Inyecta token si existe
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
+api.interceptors.request.use((cfg) => {
+  const t = getToken();
+  if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  return cfg;
 });
 
-export default api;
+export function parseError(err: any): string {
+  if (err?.response?.data?.message) return String(err.response.data.message);
+  if (err?.response?.data?.error) return String(err.response.data.error);
+  if (err?.message) return String(err.message);
+  return "Error desconocido";
+}
+
+export default api; // <— default separado

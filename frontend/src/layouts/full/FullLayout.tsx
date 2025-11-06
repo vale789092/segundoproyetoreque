@@ -1,41 +1,34 @@
-import { FC } from 'react';
+import { FC } from "react";
 import { Outlet } from "react-router";
-import ScrollToTop from 'src/components/shared/ScrollToTop';
-import Sidebar from './sidebar/Sidebar';
-import Header from './header/Header';
-import Topbar from './header/Topbar';
-
-
+import ScrollToTop from "src/components/shared/ScrollToTop";
+import Sidebar from "./sidebar/Sidebar";
+import Header from "./header/Header";
+import Topbar from "./header/Topbar";
 
 const FullLayout: FC = () => {
   return (
     <>
       <Topbar />
-      <div className="flex w-full  bg-lightgray min-h-[calc(100vh_-_65px)]">
+      <div className="flex w-full bg-lightgray min-h-[calc(100vh_-_65px)]">
         <div className="page-wrapper flex w-full">
-          {/* Header/sidebar */}
+          {/* Sidebar */}
           <Sidebar />
-          <div className="page-wrapper-sub flex flex-col w-full ">
-            {/* Top Header  */}
+
+          <div className="page-wrapper-sub flex flex-col w-full">
+            {/* Header */}
             <Header />
 
-            <div
-              className={`h-100`}
-            >
-              {/* Body Content  */}
-              <div
-                className={`w-full`}
-              >
-                <ScrollToTop>
-                  <div className="container py-30">
-                    <Outlet />
-                  </div>
-                </ScrollToTop>
-              </div>
-              
+            {/* Body */}
+            <div className="h-100 w-full">
+              <ScrollToTop>
+                <div className="container py-30">
+                  <Outlet />
+                </div>
+              </ScrollToTop>
             </div>
-            <div className="bg-lightgray text-center mt-auto">
-              </div>
+
+            {/* Footer (si quieres algo aquí) */}
+            <div className="bg-lightgray text-center mt-auto" />
           </div>
         </div>
       </div>

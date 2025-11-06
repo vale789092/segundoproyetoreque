@@ -7,8 +7,15 @@ import Notification from "./notification";
 import { Drawer } from "flowbite-react";
 import MobileSidebar from "../sidebar/MobileSidebar";
 
+import { getUser } from "@/services/storage";
+import RolePill from "src/components/shared/RolePill";
+
+
 const Header = () => {
   const [isSticky, setIsSticky] = useState(false);
+
+  const user = getUser();
+  const role = user?.rol;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,6 +63,7 @@ const Header = () => {
 
             <div className="flex gap-4 items-center">
               <Profile />
+              <RolePill role={role} />
             </div>
           </div>
         </Navbar>

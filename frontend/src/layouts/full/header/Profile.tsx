@@ -26,11 +26,11 @@ const Profile = () => {
 
         <Dropdown.Item
           as={Link}
-          to="/ui/form"
+          to="/app/perfil"
           className="px-3 py-3 flex items-center bg-hover group/link w-full gap-3 text-dark"
         >
           <Icon icon="solar:user-circle-outline" height={20} />
-          My Profile
+          Mi perfil
         </Dropdown.Item>
         <Dropdown.Item
           as={Link}
@@ -38,7 +38,7 @@ const Profile = () => {
           className="px-3 py-3 flex items-center bg-hover group/link w-full gap-3 text-dark"
         >
           <Icon icon="solar:letter-linear" height={20} />
-          My Account
+          Mi cuenta
         </Dropdown.Item>
         <Dropdown.Item
           as={Link}
@@ -46,7 +46,7 @@ const Profile = () => {
           className="px-3 py-3 flex items-center bg-hover group/link w-full gap-3 text-dark"
         >
           <Icon icon="solar:checklist-linear" height={20} />
-          My Dashboard
+          Mi dashboard
         </Dropdown.Item>
         <div className="p-3 pt-0">
         <Button as={Link}  size={'sm'}  to="/auth/login" className="mt-2 border border-primary text-primary bg-transparent hover:bg-lightprimary outline-none focus:outline-none">Logout</Button>

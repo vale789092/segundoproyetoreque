@@ -1,62 +1,42 @@
-import { Button, Checkbox, Label, TextInput } from "flowbite-react";
-import { Link, useNavigate } from "react-router";
-
-
+import { Button, Label, TextInput } from "flowbite-react";
+import { useNavigate } from "react-router";
+import { useState } from "react";
+import { login } from "@/services";
 
 const AuthLogin = () => {
-  const navigate = useNavigate();
-  const handleSubmit = (event:React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    console.log(event);
-     navigate("/");
-  }
+  const nav = useNavigate();
+  const [correo, setCorreo] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErr(null);
+    try {
+      await login({ correo, password });
+      nav('/');                     // o a donde quieras entrar
+    } catch (e: any) {
+      setErr(e.message);
+    }
+  };
+
   return (
-    <>
-      <form onSubmit={handleSubmit} >
-        <div className="mb-4">
-          <div className="mb-2 block">
-            <Label htmlFor="Username" value="Username" />
-          </div>
-          <TextInput
-            id="Username"
-            type="text"
-            sizing="md"
-            required
-            className="form-control form-rounded-xl"
-          />
-        </div>
-        <div className="mb-4">
-          <div className="mb-2 block">
-            <Label htmlFor="userpwd" value="Password" />
-          </div>
-          <TextInput
-            id="userpwd"
-            type="password"
-            sizing="md"
-            required
-            className="form-control form-rounded-xl"
-          />
-        </div>
-        <div className="flex justify-between my-5">
-          <div className="flex items-center gap-2">
-            <Checkbox id="accept" className="checkbox" />
-            <Label
-              htmlFor="accept"
-              className="opacity-90 font-normal cursor-pointer"
-            >
-              Remeber this Device
-            </Label>
-          </div>
-          <Link to={"/"} className="text-primary text-sm font-medium">
-            Forgot Password ?
-          </Link>
-        </div>
-        <Button type="submit" color={"primary"}  className="w-full bg-primary text-white rounded-xl">
-          Sign in
-        </Button>
-      </form>
-    </>
+    <form onSubmit={onSubmit}>
+      <div className="mb-4">
+        <Label htmlFor="correo" value="Correo institucional" />
+        <TextInput id="correo" type="email" value={correo}
+          onChange={(e) => setCorreo(e.target.value)} required />
+      </div>
+      <div className="mb-6">
+        <Label htmlFor="pass" value="Contraseña" />
+        <TextInput id="pass" type="password" value={password}
+          onChange={(e) => setPassword(e.target.value)} required />
+      </div>
+      {err && <p className="text-red-500 text-sm mb-3">{err}</p>}
+      <Button type="submit" className="w-full bg-primary text-white rounded-xl">
+        Iniciar sesión
+      </Button>
+    </form>
   );
 };
-
 export default AuthLogin;
