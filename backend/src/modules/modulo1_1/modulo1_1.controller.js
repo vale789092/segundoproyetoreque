@@ -1,6 +1,7 @@
 import * as M from "./modulo1_1.model.js";
 
 const bad = (res, msg) => res.status(400).json({ error: msg });
+const deny = (res, msg = "No autorizado") => res.status(403).json({ error: msg });
 
 function mapPg(e, res, next) {
   if (!e?.code) return next(e);
@@ -30,9 +31,17 @@ export async function createLab(req, res, next) {
   }
 }
 
-export async function listLabs(_req, res, next) {
+
+export async function listLabs(req, res, next) {
   try {
-    const list = await M.listLabs(); 
+    // Si viene ?mine=1 y el usuario es técnico, devuelve SOLO sus labs
+    const mine = String(req.query?.mine || "") === "1";
+    if (mine && req.user?.rol === "tecnico" && req.user?.id) {
+      const list = await M.listLabsByTechnician(req.user.id);
+      return res.status(200).json(list);
+    }
+    // default: todos
+    const list = await M.listLabs();
     return res.status(200).json(list);
   } catch (e) {
     return mapPg(e, res, next);
@@ -53,13 +62,19 @@ export async function getLab(req, res, next) {
 export async function updateLab(req, res, next) {
   try {
     const labId = String(req.params.labId);
+
+    // Si es técnico, sólo puede editar labs donde esté asignado y activo
+    if (req.user?.rol === "tecnico") {
+      const ok = await M.isTechnicianOfLab(req.user.id, labId);
+      if (!ok) return deny(res, "No autorizado para editar este laboratorio");
+    }
+
     const patch = pick(req.body, ["nombre", "codigo_interno", "ubicacion", "descripcion"]);
     if (Object.keys(patch).length === 0) return bad(res, "Nada que actualizar");
 
-    const updated = await M.updateLab(labId, patch); // debe hacer SET updated_at = now() en el model
+    const updated = await M.updateLab(labId, patch);
     if (!updated) return res.status(404).json({ error: "Laboratorio no encontrado" });
 
-    // Devuelve el detalle completo consistente con GET /labs/:labId
     const detail = await M.getLab(labId);
     return res.status(200).json(detail);
   } catch (e) {
