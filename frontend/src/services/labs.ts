@@ -92,3 +92,65 @@ export async function listMyLabs(): Promise<LabRow[]> {
   const { data } = await api.get("/labs", { params: { mine: 1 } });
   return data as LabRow[];
 }
+
+
+export type EquipoRow = {
+  id: string;
+  codigo_inventario: string;
+  nombre: string;
+  estado_operativo: "operativo"|"fuera_servicio"|"baja";
+  fecha_ultimo_mantenimiento: string | null;
+  tipo: "equipo"|"material"|"software";
+  estado_disp: "disponible"|"reservado"|"en_mantenimiento"|"inactivo";
+  cantidad_total: number;
+  cantidad_disponible: number;
+  ficha_tecnica: any;
+  fotos: any;
+  reservable: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listEquiposByCriteria(
+  { labId, soloDisponibles = false }: { labId: string; soloDisponibles?: boolean }
+): Promise<EquipoRow[]> {
+  const params = new URLSearchParams();
+  if (soloDisponibles) { params.set("estado_disp", "disponible"); params.set("reservable", "true"); }
+  const { data } = await api.get(`/labs/${labId}/equipos${params.toString() ? `?${params}` : ""}`);
+  return data as EquipoRow[];
+}
+
+/**
+ * Horarios del laboratorio (mock por ahora):
+ * Cuando implementes el endpoint real, cámbialo a:
+ *   GET /labs/:labId/horarios?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+ */
+export type LabSlot = {
+  fecha: string;      // "2025-11-06"
+  desde: string;      // "08:00"
+  hasta: string;      // "12:00"
+  bloqueado?: boolean;
+  motivo?: string | null;
+};
+
+export async function listLabHorariosMock(labId: string, diaISO: string): Promise<LabSlot[]> {
+  // MOCK determinista por día; reemplazar por fetch real cuando exista endpoint
+  // p.ej. GET /labs/:labId/horarios?fecha=YYYY-MM-DD
+  const weekday = new Date(diaISO).getDay(); // 0..6
+  if (!labId) return [];
+  // ejemplo simple: L-V 08-12 y 13-17 disponibles; miércoles 13-15 bloqueado
+  const base: LabSlot[] = [
+    { fecha: diaISO, desde: "08:00", hasta: "12:00" },
+    { fecha: diaISO, desde: "13:00", hasta: "17:00" },
+  ];
+  if (weekday === 3) {
+    base[1] = { ...base[1], bloqueado: true, motivo: "Mantenimiento" };
+  }
+  return base;
+}
+
+// services/labs.ts
+export async function listLabHorarios(labId: string, fecha: string) {
+  const { data } = await api.get(`/labs/${labId}/horarios?fecha=${fecha}`);
+  return data as LabSlot[];
+}

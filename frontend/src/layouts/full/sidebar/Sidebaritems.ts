@@ -9,7 +9,7 @@ export type NavItem = {
   icon?: ReactNode;
   badge?: string;
   children?: NavItem[];
-  roles?: Rol[];          // ← NUEVO
+  roles?: Rol[];
 };
 
 export type SidebarSection = {
@@ -23,6 +23,7 @@ const SidebarContent: SidebarSection[] = [
     heading: "Operación",
     children: [
       { id: "reservas",     title: "Reservas",     to: "/app/reservas",     roles: ["estudiante","profesor","tecnico","admin"] },
+      { id: "mis-solicitudes", title: "Mis solicitudes", to: "/app/mis-solicitudes", roles: ["estudiante","profesor","tecnico","admin"] },
       { id: "prestamos",    title: "Préstamos",    to: "/app/prestamos",    roles: ["profesor","tecnico","admin"] },
       { id: "devoluciones", title: "Devoluciones", to: "/app/devoluciones", roles: ["profesor","tecnico","admin"] },
       { id: "inventario",   title: "Inventario",   to: "/app/inventario",   roles: ["tecnico","admin"] },
