@@ -4,8 +4,6 @@ import SidebarContent from "./Sidebaritems";
 import NavItems from "./NavItems";
 import SimpleBar from "simplebar-react";
 import React from "react";
-import FullLogo from "../shared/logo/FullLogo";
-import Upgrade from "./Upgrade";
 import NavCollapse from "./NavCollapse";
 
 const SidebarLayout = () => {
@@ -18,8 +16,8 @@ const SidebarLayout = () => {
           className="fixed menu-sidebar  bg-white dark:bg-darkgray rtl:pe-4 rtl:ps-0 top-[72px]"
           aria-label="Sidebar with multi-level dropdown example"
         >
-          <div className="px-6 py-4 flex items-center sidebarlogo">
-            <FullLogo />
+          <div className="px-6 py-4 flex items-center sidebarlogo">            
+          <h5 className="card-title">LabTec</h5>
           </div>
           <SimpleBar className="h-[calc(100vh_-_294px)]">
             <Sidebar.Items className="px-5 mt-2">
@@ -48,7 +46,6 @@ const SidebarLayout = () => {
               </Sidebar.ItemGroup>
             </Sidebar.Items>
           </SimpleBar>
-          <Upgrade/>
         </Sidebar>
       </div>
     </>

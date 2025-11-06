@@ -4,7 +4,7 @@ import SidebarContent from "./Sidebaritems";
 import NavItems from "./NavItems";
 import SimpleBar from "simplebar-react";
 import React from "react";
-import FullLogo from "../shared/logo/FullLogo";
+
 import 'simplebar-react/dist/simplebar.min.css';
 import Upgrade from "./Upgrade";
 
@@ -17,7 +17,7 @@ const MobileSidebar = () => {
           aria-label="Sidebar with multi-level dropdown example"
         >
           <div className="px-5 py-4 pb-7 flex items-center sidebarlogo">
-            <FullLogo />
+            
           </div>
           <SimpleBar className="h-[calc(100vh_-_242px)]">
             <Sidebar.Items className="px-5 mt-2">

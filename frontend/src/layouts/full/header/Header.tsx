@@ -1,13 +1,11 @@
 
 import { useState, useEffect } from "react";
-import {  Button, Navbar } from "flowbite-react";
+import { Navbar } from "flowbite-react";
 import { Icon } from "@iconify/react";
 import Profile from "./Profile";
 import Notification from "./notification";
 import { Drawer } from "flowbite-react";
 import MobileSidebar from "../sidebar/MobileSidebar";
-import { Link } from "react-router";
-
 
 const Header = () => {
   const [isSticky, setIsSticky] = useState(false);
@@ -57,9 +55,6 @@ const Header = () => {
             </div>
 
             <div className="flex gap-4 items-center">
-              <Button as={Link} to="https://www.wrappixel.com/templates/category/react-templates/?ref=376#demos" target="_blank" size={'sm'} color={"primary"} className="rounded-full py-1 px-3 font-medium">
-                Check Pro Template
-              </Button>
               <Profile />
             </div>
           </div>
