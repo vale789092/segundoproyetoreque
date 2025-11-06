@@ -60,3 +60,18 @@ export async function me() {
     throw new Error(parseError(err));
   }
 }
+
+export async function updateMe(payload: Partial<{
+  nombre: string; correo: string; codigo: string; rol: Rol;
+  carrera: string; telefono: string;
+}>) {
+  try {
+    const { data } = await api.patch("/auth/me", payload);
+    if (data?.token) setToken(data.token);
+    if (data?.user)  setUser(data.user);
+    return data?.user;
+  } catch (err) {
+    throw new Error(parseError(err));
+  }
+}
+
