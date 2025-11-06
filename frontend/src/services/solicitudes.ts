@@ -32,8 +32,29 @@ export type SolicitudCreate = {
 
 /** Crea solicitud del usuario autenticado */
 export async function createSolicitud(payload: SolicitudCreate): Promise<{ id: string; estado: SolicitudEstado; creada_en: string }> {
-  const { data } = await api.post("/requests", payload);
-  return data;
+  try {
+    const { data } = await api.post("/requests", payload);
+    return data;
+  } catch (err: any) {
+    // Propaga el 409 para mostrar mensaje específico
+    if (err?.response?.status === 409) {
+      throw new Error("Ya tienes una solicitud activa que se cruza para este recurso.");
+    }
+    throw err;
+  }
+}
+
+
+export async function updateRequest(id: string, patch: any) {
+  try {
+    const { data } = await api.patch(`/requests/${id}`, patch);
+    return data;
+  } catch (err: any) {
+    if (err?.response?.status === 409) {
+      throw new Error("Ya tienes una solicitud activa que se cruza para este recurso.");
+    }
+    throw err;
+  }
 }
 
 /** Lista solicitudes del usuario autenticado (seguimiento) */

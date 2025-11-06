@@ -59,6 +59,14 @@ export async function createRequest({
   await assertRecursoOk({ laboratorio_id, recurso_id });
   await assertNoOverlapAprobadas({ recurso_id, ini: fecha_uso_inicio, fin: fecha_uso_fin });
 
+  // NUEVO: misma persona no puede duplicar/solapar para el mismo recurso
+  await assertNoDupForUser({
+    usuario_id,
+    recurso_id,
+    ini: fecha_uso_inicio,
+    fin: fecha_uso_fin
+  });
+
   // normaliza adjuntos si vienen como string
   if (typeof adjuntos === "string") { try { adjuntos = JSON.parse(adjuntos); } catch { adjuntos = null; } }
 
@@ -114,6 +122,15 @@ export async function getRequestById({ id, usuario_id, rol }) {
 
 /** Edita si es del usuario, está 'pendiente' y aún no inicia */
 export async function updateRequestOwned({ id, usuario_id, patch }) {
+
+  await assertNoDupForUser({
+    usuario_id,
+    recurso_id: next.recurso_id,
+    ini: next.fecha_uso_inicio,
+    fin: next.fecha_uso_fin,
+    excludeId: id, // <— permite editar la misma sin que choque consigo misma
+  });
+
   // Leer solicitud con lock ligero
   const cur = (await pool.query(
     `SELECT id, usuario_id, laboratorio_id, recurso_id, estado, fecha_uso_inicio, fecha_uso_fin
@@ -198,4 +215,25 @@ export async function setStatus({ id, estado, aprobada_en, actor_user_id }) {
   await logHist(cur.laboratorio_id, accion, { solicitud_id: id, estado, actor_user_id }, actor_user_id);
 
   return rows[0];
+}
+
+async function assertNoDupForUser({ usuario_id, recurso_id, ini, fin, excludeId=null }) {
+  const params = [usuario_id, recurso_id, ini, fin];
+  let sql = `
+    SELECT 1
+      FROM solicitudes
+     WHERE usuario_id = $1
+       AND recurso_id  = $2
+       AND estado IN ('pendiente','en_revision','aprobada')
+       AND tstzrange(fecha_uso_inicio, fecha_uso_fin, '[)') &&
+           tstzrange($3, $4, '[)')
+  `;
+  if (excludeId) { sql += ` AND id <> $5`; params.push(excludeId); }
+
+  const r = await pool.query(sql, params);
+  if (r.rowCount) {
+    const e = new Error("Duplicada por usuario");
+    e.code = "DUP_BY_USER";
+    throw e;
+  }
 }
