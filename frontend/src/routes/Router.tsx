@@ -34,6 +34,10 @@ const Register   = Loadable(lazy(() => import('../views/auth/register/Register')
 const SamplePage = Loadable(lazy(() => import('../views/sample-page/SamplePage')));
 const ErrorPage  = Loadable(lazy(() => import('../views/auth/error/Error')));
 
+// Labs
+const LabDetail = Loadable(lazy(() => import('../views/labs/LabDetail')));
+
+
 const Router = [
   // Área protegida
   {
@@ -62,6 +66,9 @@ const Router = [
       { path: '/ui/alert',      exact: true, element: <Alert/> },
       { path: '/icons/solar',   exact: true, element: <Solar /> },
       { path: '/sample-page',   exact: true, element: <SamplePage /> },
+
+      // Labs
+      { path: '/app/labs/:id', element: <LabDetail /> },
 
       { path: '*', element: <Navigate to="/auth/404" /> },
     ],
