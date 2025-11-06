@@ -5,6 +5,7 @@ import { labsRouter } from "../modules/modulo1_1/modulo1_1.routes.js";
 import modulo1_2Router from "../modules/modulo1_2/modulo1_2.routes.js";
 import modulo3_3 from "../modules/modulo3_3/modulo3_3.routes.js";
 import modulo3_4 from "../modules/modulo3_4/modulo3_4.routes.js";
+import usersRoutes from "../modules/users/users.routes.js";
 
 export const router = Router();
 
@@ -26,3 +27,6 @@ router.use("/requests", modulo3_3);
 // 3.4 Historial de uso
 router.use("/history", modulo3_4);
 
+
+//chats
+router.use("/users", usersRoutes);
