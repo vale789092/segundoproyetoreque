@@ -7,6 +7,7 @@ import modulo3_3 from "../modules/modulo3_3/modulo3_3.routes.js";
 import modulo3_4 from "../modules/modulo3_4/modulo3_4.routes.js";
 import modulo4_1 from "../modules/modulo4_1/modulo4_1.route.js";
 import modulo4_3 from "../modules/modulo4_3/modulo4_3.route.js"
+import modulo4_4 from "../modules/modulo4_4/modulo4_4.route.js"
 
 export const router = Router();
 
@@ -23,6 +24,7 @@ router.use("/labs", labsRouter);
 router.use("/labs", modulo1_2Router);
 router.use("/admin", modulo4_1);
 router.use("/admin", modulo4_3);
+router.use("/admin/reports", modulo4_4);
 
 // 3.3 Gestión de solicitudes y reservas
 router.use("/requests", modulo3_3);
