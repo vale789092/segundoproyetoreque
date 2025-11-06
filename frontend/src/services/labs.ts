@@ -1,3 +1,4 @@
+// services/labs.ts
 import api from "./api";
 
 export type LabRow = {
@@ -84,4 +85,10 @@ export async function updateLab(labId: string, patch: LabPatch) {
 export async function deleteLab(labId: string) {
   const { data } = await api.delete(`/labs/${labId}`);
   return data as { ok: boolean };
+}
+
+export async function listMyLabs(): Promise<LabRow[]> {
+  // Requiere que el backend soporte GET /labs?mine=1 (lo dejamos listo)
+  const { data } = await api.get("/labs", { params: { mine: 1 } });
+  return data as LabRow[];
 }

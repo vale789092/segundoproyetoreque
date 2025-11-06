@@ -1,3 +1,4 @@
+// components/labs/LabForm.tsx
 import { useEffect, useState } from "react";
 import { Button, Modal, TextInput, Label, Textarea } from "flowbite-react";
 

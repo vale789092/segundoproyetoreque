@@ -42,3 +42,9 @@ Admin
   "carrera": "Dirección de Laboratorios",
   "telefono": "88886789"
 }
+
+Admin: C/E/D
+
+Técnico: E solo en sus labs (?mine=1)
+
+Profesor/Estudiante: solo lectura
