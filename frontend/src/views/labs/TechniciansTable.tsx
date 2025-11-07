@@ -1,6 +1,7 @@
 // src/components/labs/TechniciansTable.tsx
 import React from "react";
 import { Plus, Pencil, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Button } from "flowbite-react"; // ← usamos los mismos botones que PoliciesTab
 import {
   listLabTechnicians,
   addLabTechnician,
@@ -56,7 +57,6 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
 
   React.useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Cargar elegibles cuando abres el modal
   async function openCreate() {
     setShowCreate(true);
     setSelectedUserId("");
@@ -65,7 +65,7 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
     try {
       setEligibleLoading(true);
       setEligibleErr(null);
-      const data = await listEligibleTechnicians(labId); // endpoint scoped
+      const data = await listEligibleTechnicians(labId);
       setEligible(data);
     } catch (e: any) {
       setEligibleErr(e?.response?.data?.error ?? e?.message ?? "No se pudo listar técnicos elegibles");
@@ -77,10 +77,7 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedUserId) {
-      alert("Selecciona un usuario");
-      return;
-    }
+    if (!selectedUserId) return alert("Selecciona un usuario");
     try {
       setCreateBusy(true);
       await addLabTechnician(labId, {
@@ -104,7 +101,7 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${d.getFullYear()}-${m}-${day}`;
-    }
+  }
 
   function handleStartEdit(row: LabTechnician) {
     setEditRow(row);
@@ -145,27 +142,22 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
 
   return (
     <div className="space-y-4">
+      {/* header acciones */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Técnicos responsables</h3>
         <div className="flex items-center gap-2">
-          <button
-            onClick={fetchData}
-            className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-white/5"
-            title="Refrescar"
-          >
-            <RefreshCw className="h-4 w-4" /> Refrescar
-          </button>
+          <Button color="light" onClick={fetchData}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refrescar
+          </Button>
           {isAdmin && (
-            <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-white/5"
-            >
-              <Plus className="h-4 w-4" /> Agregar técnico
-            </button>
+            <Button color="light" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" /> Agregar técnico
+            </Button>
           )}
         </div>
       </div>
 
+      {/* tabla */}
       {loading ? (
         <div className="flex items-center gap-2 text-sm opacity-80">
           <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
@@ -173,11 +165,13 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
       ) : error ? (
         <div className="text-sm text-red-500">{error}</div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border p-6 text-sm opacity-80">No hay técnicos asignados.</div>
+        <div className="rounded-2xl border p-6 text-sm bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+          No hay técnicos asignados.
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="overflow-x-auto rounded-2xl border bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">
           <table className="min-w-full text-sm">
-            <thead className="bg-white/5">
+            <thead className="bg-slate-50 dark:bg-white/5">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">Nombre</th>
                 <th className="px-4 py-3 text-left font-medium">Correo</th>
@@ -186,27 +180,32 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
             </thead>
             <tbody>
               {items.map((row) => (
-                <tr key={row.id} className="border-t">
+                <tr key={row.id} className="border-t hover:bg-slate-50/70 dark:hover:bg-white/5">
                   <td className="px-4 py-3">{(row as any).usuario_nombre ?? "—"}</td>
                   <td className="px-4 py-3">{(row as any).usuario_correo ?? "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
+                        color="light"
+                        size="xs"
                         onClick={() => handleStartEdit(row)}
-                        className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 hover:bg-white/5 disabled:opacity-50"
                         title="Editar asignación"
                         disabled={!isAdmin}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
+                        <Pencil className="h-4 w-4 mr-1" /> Editar
+                      </Button>
+                      <Button
+                        color="failure"
+                        size="xs"
                         onClick={() => handleRemove(row.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 hover:bg-white/5 disabled:opacity-50"
                         disabled={!isAdmin || removeBusy === row.id}
                         title="Eliminar"
                       >
-                        {removeBusy === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </button>
+                        {removeBusy === row.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Trash2 className="h-4 w-4 mr-1" />}
+                        Eliminar
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -216,7 +215,7 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
         </div>
       )}
 
-      {/* Modal Crear: SOLO select de técnicos elegibles */}
+      {/* Modal Crear */}
       {showCreate && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl border bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 p-6 shadow-xl">
@@ -271,16 +270,12 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
                 </div>
 
                 <div className="flex items-center justify-end gap-2">
-                  <button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border px-3 py-2 text-sm">
+                  <Button color="light" type="button" onClick={() => setShowCreate(false)}>
                     Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createBusy}
-                    className="rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button type="submit" disabled={createBusy}>
                     {createBusy ? "Guardando…" : "Guardar"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}
@@ -315,16 +310,12 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
               </div>
 
               <div className="flex items-center justify-end gap-2">
-                <button type="button" onClick={() => setEditRow(null)} className="rounded-xl border px-3 py-2 text-sm">
+                <Button color="light" type="button" onClick={() => setEditRow(null)}>
                   Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={editBusy}
-                  className="rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                >
+                </Button>
+                <Button type="submit" disabled={editBusy}>
                   {editBusy ? "Guardando…" : "Guardar"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
