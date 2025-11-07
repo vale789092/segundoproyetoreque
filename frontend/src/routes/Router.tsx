@@ -54,18 +54,18 @@ const Router = [
       { path: '/',               exact: true, element: <Dashboard /> },
 
       // Operación
-      { path: '/app/reservas',      element: <Reservas /> },
+      { path: '/app/reservas',        element: <Reservas /> },
       { path: '/app/mis-solicitudes', element: <MisSolicitudes /> },
-      { path: '/app/prestamos',     element: <Prestamos /> },
-      { path: '/app/devoluciones',  element: <Devoluciones /> },
-      { path: '/app/inventario',    element: <Inventario /> },
-      { path: '/app/reportes',      element: <Reportes /> },
+      { path: '/app/prestamos',       element: <Prestamos /> },
+      { path: '/app/devoluciones',    element: <Devoluciones /> },
+      { path: '/app/inventario',      element: <Inventario /> },
+      { path: '/app/reportes',        element: <Reportes /> },
 
       // Historial (nuevo)
-      { path: '/app/historial',        element: <MyHistory /> },
+      { path: '/app/historial',       element: <MyHistory /> },
 
       // Perfil
-      { path: '/app/perfil',        element: <Perfil /> },
+      { path: '/app/perfil',          element: <Perfil /> },
 
       // Utilities (si las mantienes)
       { path: '/ui/typography', exact: true, element: <Typography/> },
@@ -74,8 +74,8 @@ const Router = [
       { path: '/icons/solar',   exact: true, element: <Solar /> },
       { path: '/sample-page',   exact: true, element: <SamplePage /> },
 
-      // Labs
-      { path: '/app/labs/:id', element: <LabDetail /> },
+      // Labs (param en singular consistente con LabDetail)
+      { path: '/app/labs/:labId', element: <LabDetail /> },
 
       { path: '*', element: <Navigate to="/auth/404" /> },
     ],

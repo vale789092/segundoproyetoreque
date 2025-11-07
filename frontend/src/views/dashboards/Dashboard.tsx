@@ -1,4 +1,4 @@
-// views/dashboards/Dashboard.tsx
+// src/views/dashboards/Dashboard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Tooltip, Label, Select, TextInput, ToggleSwitch } from "flowbite-react";
 import { Icon } from "@iconify/react";
@@ -6,7 +6,7 @@ import { useNavigate } from "react-router";
 import { listLabs, createLab, updateLab, deleteLab, LabRow } from "@/services/labs";
 import { listEquiposByCriteria, listLabHorariosMock, EquipoRow } from "@/services/labs";
 import { getUser } from "@/services/storage";
-import LabForm from "@/components/labs/LabForm";
+import LabForm from "@/views/labs/LabForm";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 type Rol = "estudiante" | "profesor" | "tecnico" | "admin";
@@ -69,7 +69,6 @@ export default function Dashboard() {
   }, [selLabId, fecha]);
 
   const hayChoqueHorario = useMemo(() => {
-    // si el slot está bloqueado y se superpone con [horaDesde, horaHasta], marcamos choque
     const toMin = (hhmm: string) => {
       const [h,m] = hhmm.split(":").map(Number);
       return (h*60)+(m||0);
@@ -90,6 +89,7 @@ export default function Dashboard() {
     try {
       const rows = await listEquiposByCriteria({
         labId: selLabId,
+        // @ts-expect-error: la firma original no recibe 'tipo' (si tu servicio lo soporta, añádelo)
         tipo: (tipo || undefined) as any,
         soloDisponibles: soloDisp
       });
@@ -216,10 +216,15 @@ export default function Dashboard() {
                   <div className="text-sm mt-2">
                     <b>Disp.:</b> {eq.cantidad_disponible}/{eq.cantidad_total}
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-3 flex gap-2">
                     <Button size="xs" color="light" onClick={() => nav(`/app/labs/${selLabId}?equipo=${eq.id}`)}>
                       Ver ficha / solicitar
                     </Button>
+                    {(me.rol === "admin" || me.rol === "tecnico") && (
+                      <Button size="xs" color="light" onClick={() => nav(`/app/labs/${selLabId}#lab-technicians`)}>
+                        Técnicos
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -249,8 +254,10 @@ export default function Dashboard() {
               <ul className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {labs.map((l) => (
                   <li key={l.id}>
-                    <div className="relative rounded-2xl border p-4 hover:shadow-sm cursor-pointer group"
-                         onClick={() => nav(`/app/labs/${l.id}`)}>
+                    <div
+                      className="relative rounded-2xl border p-4 hover:shadow-sm cursor-pointer group"
+                      onClick={() => nav(`/app/labs/${l.id}`)}
+                    >
                       {/* acciones */}
                       <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                         <Tooltip content="Editar">
@@ -269,12 +276,38 @@ export default function Dashboard() {
                             <Icon icon="solar:trash-bin-minimalistic-linear" />
                           </button>
                         </Tooltip>
+                        {/* Ir directo a Técnicos */}
+                        {(me.rol === "admin" || me.rol === "tecnico") && (
+                          <Tooltip content="Gestionar técnicos">
+                            <button
+                              className="h-8 w-8 rounded-full bg-lightgray flex items-center justify-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                nav(`/app/labs/${l.id}#lab-technicians`);
+                              }}
+                            >
+                              <Icon icon="solar:users-group-linear" />
+                            </button>
+                          </Tooltip>
+                        )}
                       </div>
 
                       <div className="font-medium">{l.nombre}</div>
                       <div className="text-sm text-slate-600">{l.ubicacion}</div>
                       <div className="text-xs text-slate-400 mt-1">{l.codigo_interno}</div>
                       {l.descripcion && <div className="text-xs text-slate-500 mt-2 line-clamp-2">{l.descripcion}</div>}
+
+                      {/* CTA abajo */}
+                      <div className="mt-3 flex gap-2">
+                        <Button size="xs" color="light" onClick={(e)=>{ e.stopPropagation(); nav(`/app/labs/${l.id}`); }}>
+                          Ver detalle
+                        </Button>
+                        {(me.rol === "admin" || me.rol === "tecnico") && (
+                          <Button size="xs" color="light" onClick={(e)=>{ e.stopPropagation(); nav(`/app/labs/${l.id}#lab-technicians`); }}>
+                            Técnicos
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </li>
                 ))}

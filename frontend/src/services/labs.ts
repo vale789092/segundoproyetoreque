@@ -168,3 +168,70 @@ export async function listPolicies(labId: string) {
   }>;
 }
 
+
+// ——— Tipos ———
+export type LabTechnician = {
+  id: string;                 // id de tecnicos_labs (relación)
+  usuario_id: string;
+  usuario_nombre: string | null;
+  usuario_correo: string;
+  usuario_rol: "tecnico" | "admin" | "profesor" | "estudiante";
+  usuario_telefono: string | null;
+  cargo: "tecnico" | "encargado" | "asistente" | "otro";
+  activo: boolean;
+  asignado_desde: string | null;
+  asignado_hasta: string | null;
+};
+
+export type EligibleUser = {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol: "admin" | "tecnico" | "profesor" | "estudiante";
+  activo: boolean;
+};
+
+export type CreateLabTechnicianDTO = {
+  usuario_id: string;                 // requerido por backend
+  activo?: boolean;                   // opcional
+  asignado_hasta?: string | null;     // opcional (ISO)
+};
+
+export type UpdateLabTechnicianDTO = Partial<{
+  cargo: "tecnico" | "encargado" | "asistente" | "otro";
+  activo: boolean;
+  asignado_hasta: string | null;
+}>;
+
+
+// ——— Servicios ———
+export async function listLabTechnicians(labId: string): Promise<LabTechnician[]> {
+  const { data } = await api.get(`/labs/${labId}/technicians`);
+  return data as LabTechnician[];
+}
+
+export async function listEligibleTechnicians(): Promise<EligibleUser[]> {
+  const { data } = await api.get(`/users`, { params: { eligible: "techs" } });
+  return data as EligibleUser[]; // debe filtrar rol=tecnico (activo) o admin
+}
+
+export async function addLabTechnician(
+  labId: string,
+  payload: CreateLabTechnicianDTO
+): Promise<{ id: string }> {                     // el backend retorna { id }
+  const { data } = await api.post(`/labs/${labId}/technicians`, payload);
+  return data as { id: string };
+}
+
+export async function updateLabTechnician(
+  labId: string,
+  tecLabId: string,
+  patch: UpdateLabTechnicianDTO
+): Promise<{ id: string }> {
+  const { data } = await api.patch(`/labs/${labId}/technicians/${tecLabId}`, patch);
+  return data as { id: string };
+}
+
+export async function removeLabTechnician(labId: string, tecLabId: string): Promise<void> {
+  await api.delete(`/labs/${labId}/technicians/${tecLabId}`);
+}

@@ -727,3 +727,20 @@ export async function isTechnicianOfLab(userId, labId) {
   );
   return rowCount > 0;
 }
+
+
+// AL FINAL DEL ARCHIVO (o cerca de users helpers)
+export async function listEligibleTechnicians() {
+  const { rows } = await pool.query(
+    `SELECT ${COL.users.id}      AS id,
+            ${COL.users.nombre}  AS nombre,
+            ${COL.users.correo}  AS correo,
+            ${COL.users.rol}     AS rol,
+            ${COL.users.activo}  AS activo
+       FROM ${TB.users}
+      WHERE ( ${COL.users.rol} = 'admin'
+           OR ( ${COL.users.rol} = 'tecnico' AND ${COL.users.activo} = true ) )
+      ORDER BY ${COL.users.nombre} ASC, ${COL.users.correo} ASC`
+  );
+  return rows;
+}

@@ -1,87 +1,161 @@
-import { useEffect, useState } from "react";
+// src/views/labs/LabDetail.tsx
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router";
 import { Card, Tabs, Badge } from "flowbite-react";
-import { getLab } from "@/services/labs";
-import { listPolicies } from "@/services/labs";
+import { getLab, listPolicies } from "@/services/labs";
+import TechniciansTable from "@/views/labs/TechniciansTable";
+
+type RouteParams = { id?: string; labId?: string };
+
+type LabRowLike = {
+  id?: string;
+  nombre?: string;
+  ubicacion?: string;
+  codigo_interno?: string;
+  descripcion?: string | null;
+};
+
+type PolicyLike = {
+  id: string;
+  nombre?: string;
+  descripcion?: string | null;
+  tipo?: "seguridad" | "academico" | "otro" | string;
+  obligatorio?: boolean;
+  vigente_desde?: string | null;
+  vigente_hasta?: string | null;
+};
 
 export default function LabDetail() {
-  type RouteParams = { id: string };
-  const { id = "" } = useParams();
-  const [data, setData] = useState<any>(null);
-  const [err, setErr] = useState<string|null>(null);
-  const [pols, setPols] = useState<any[]>([]);
-  const [loadingPols, setLoadingPols] = useState(false);
-  const { id: labId } = useParams<RouteParams>();
+  // Soporta /app/labs/:id y /app/labs/:labId
+  const { id: idA, labId: idB } = useParams<RouteParams>();
+  const labId = (idA ?? idB ?? "").trim();
 
+  const [data, setData] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [pols, setPols] = useState<PolicyLike[]>([]);
+  const [loadingPols, setLoadingPols] = useState(false);
+
+  // Carga políticas
   useEffect(() => {
     if (!labId) return;
+    let alive = true;
     (async () => {
       setLoadingPols(true);
       try {
         const rows = await listPolicies(labId);
-        setPols(rows);
-      } finally { setLoadingPols(false); }
+        if (!alive) return;
+        setPols(Array.isArray(rows) ? rows : []);
+      } finally {
+        if (alive) setLoadingPols(false);
+      }
     })();
+    return () => {
+      alive = false;
+    };
   }, [labId]);
 
+  // Carga detalle de lab
   useEffect(() => {
+    if (!labId) return;
+    let alive = true;
     (async () => {
       try {
         setErr(null);
-        const d = await getLab(id);
-        setData(d);
-      } catch (e:any) { setErr(e?.message ?? "Error cargando"); }
+        const d = await getLab(labId);
+        if (!alive) return;
+        setData(d ?? null);
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(e?.message ?? "Error cargando");
+        setData(null);
+      }
     })();
-  }, [id]);
+    return () => {
+      alive = false;
+    };
+  }, [labId]);
+
+  // Normalización robusta: soporta { lab, technicians, policies } o un objeto lab plano
+  const lab: LabRowLike | null = useMemo(() => {
+    if (!data) return null;
+    // Si viene con { lab, technicians, policies }
+    if (typeof data === "object" && data !== null && "lab" in data) {
+      return (data as any).lab ?? null;
+    }
+    // Si viene plano (sólo el lab)
+    return data as LabRowLike;
+  }, [data]);
 
   if (err) return <Card><p className="text-red-600">{err}</p></Card>;
-  if (!data) return <Card><p>Cargando…</p></Card>;
+  if (!labId) return <Card><p>Laboratorio no encontrado.</p></Card>;
+  if (!data || !lab) return <Card><p>Cargando…</p></Card>;
 
-  const { lab } = data;
   return (
     <div className="space-y-4">
       <Card>
-        <h3 className="text-lg font-semibold">{lab.nombre}</h3>
-        <p className="text-sm text-slate-600">{lab.ubicacion}</p>
-        <p className="text-xs text-slate-400">{lab.codigo_interno}</p>
-        {lab.descripcion && <p className="text-sm mt-2">{lab.descripcion}</p>}
+        <h3 className="text-lg font-semibold">{lab?.nombre ?? "Laboratorio"}</h3>
+        <p className="text-sm text-slate-600">{lab?.ubicacion ?? "—"}</p>
+        <p className="text-xs text-slate-400">{lab?.codigo_interno ?? "—"}</p>
+        {lab?.descripcion && <p className="text-sm mt-2">{lab.descripcion}</p>}
       </Card>
 
       <Tabs>
         <Tabs.Item title="Técnicos">
-          {/* aquí montarás CRUD de tecnicos_labs */}
-          <pre className="text-xs">{JSON.stringify(data.technicians, null, 2)}</pre>
+          {/* CRUD de tecnicos_labs */}
+          <div id="lab-technicians" />
+          <TechniciansTable labId={labId} />
         </Tabs.Item>
+
         <Tabs.Item title="Políticas">
-          {/* CRUD de requisitos */}
           <div className="space-y-3">
-    {loadingPols ? <p>Cargando políticas…</p> :
-      pols.length === 0 ? <p className="text-sm text-slate-500">Este laboratorio no tiene políticas publicadas.</p> :
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {pols.map(p => (
-          <Card key={p.id} className="rounded-2xl">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">{p.nombre}</h4>
-              <Badge color={p.tipo === "seguridad" ? "red" : p.tipo === "academico" ? "indigo" : "gray"}>
-                {p.tipo}
-              </Badge>
-            </div>
-            {p.descripcion && <p className="text-sm text-slate-600">{p.descripcion}</p>}
-            <div className="text-xs text-slate-500 space-x-2">
-              <Badge color={p.obligatorio ? "blue" : "gray"}>{p.obligatorio ? "Obligatorio" : "Opcional"}</Badge>
-              {p.vigente_desde && <span>Desde: {new Date(p.vigente_desde).toLocaleDateString()}</span>}
-              {p.vigente_hasta && <span>Hasta: {new Date(p.vigente_hasta).toLocaleDateString()}</span>}
-            </div>
-          </Card>
-        ))}
-      </div>
-    }
-  </div>
+            {loadingPols ? (
+              <p>Cargando políticas…</p>
+            ) : pols.length === 0 ? (
+              <p className="text-sm text-slate-500">Este laboratorio no tiene políticas publicadas.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pols.map((p) => (
+                  <Card key={p.id} className="rounded-2xl">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">{p.nombre ?? "Política"}</h4>
+                      <Badge
+                        color={
+                          p.tipo === "seguridad"
+                            ? "red"
+                            : p.tipo === "academico"
+                            ? "indigo"
+                            : "gray"
+                        }
+                      >
+                        {p.tipo ?? "otro"}
+                      </Badge>
+                    </div>
+                    {p.descripcion && (
+                      <p className="text-sm text-slate-600">{p.descripcion}</p>
+                    )}
+                    <div className="text-xs text-slate-500 space-x-2">
+                      <Badge color={p.obligatorio ? "blue" : "gray"}>
+                        {p.obligatorio ? "Obligatorio" : "Opcional"}
+                      </Badge>
+                      {p.vigente_desde && (
+                        <span>Desde: {new Date(p.vigente_desde).toLocaleDateString()}</span>
+                      )}
+                      {p.vigente_hasta && (
+                        <span>Hasta: {new Date(p.vigente_hasta).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </Tabs.Item>
+
         <Tabs.Item title="Equipos">
-          {/* Lista de /labs/:id/equipos */}
           <p>Pendiente de implementar.</p>
         </Tabs.Item>
+
         <Tabs.Item title="Historial">
           <p>Pendiente de implementar (GET /labs/:id/history).</p>
         </Tabs.Item>

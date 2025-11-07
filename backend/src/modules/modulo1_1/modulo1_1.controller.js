@@ -314,3 +314,14 @@ export async function deleteEquipo(req, res) {
     return res.status(200).json({ ok: true });
   } catch (e) { return sendError(res, e); }
 }
+
+// debajo de "TECNICOS_LABS CRUD"
+export async function listEligibleTechnicians(req, res, next) {
+  try {
+    // opcional: solo admin puede ver candidatos
+    if (req.user?.rol !== 'admin') return deny(res);
+
+    const list = await M.listEligibleTechnicians();
+    return res.json(list);
+  } catch (e) { return next(e); }
+}
