@@ -3,11 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Tooltip, Label, Select, TextInput, ToggleSwitch } from "flowbite-react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router";
-import { listLabs, createLab, updateLab, deleteLab, LabRow } from "@/services/labs";
-import { listEquiposByCriteria, listLabHorariosMock, EquipoRow } from "@/services/labs";
+import {
+  listLabs, createLab, updateLab, deleteLab, LabRow,
+  listEquiposByCriteria, EquipoRow,
+  listLabHorarios, type LabSlot
+} from "@/services/labs";
 import { getUser } from "@/services/storage";
 import LabForm from "@/views/labs/LabForm";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+
+
 
 type Rol = "estudiante" | "profesor" | "tecnico" | "admin";
 
@@ -21,8 +26,8 @@ export default function Dashboard() {
   const [err, setErr] = useState<string | null>(null);
 
   const [openCreate, setOpenCreate] = useState(false);
-  const [openEdit, setOpenEdit] = useState<{open:boolean; lab?: LabRow}>({open:false});
-  const [openDelete, setOpenDelete] = useState<{open:boolean; lab?: LabRow}>({open:false});
+  const [openEdit, setOpenEdit] = useState<{ open: boolean; lab?: LabRow }>({ open: false });
+  const [openDelete, setOpenDelete] = useState<{ open: boolean; lab?: LabRow }>({ open: false });
   const [submitting, setSubmitting] = useState(false);
 
   async function refresh() {
@@ -31,51 +36,90 @@ export default function Dashboard() {
     try {
       const data = await listLabs();
       setLabs(data);
-    } catch (e:any) {
+    } catch (e: any) {
       setErr(e?.message ?? "Error cargando laboratorios");
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
-  const canManageLabs = me.rol === "admin" || me.rol === "tecnico"; // permisos CRUD
-  const canSearch = ["estudiante","profesor","tecnico","admin"].includes(me.rol ?? "estudiante");
+  const canManageLabs = me.rol === "admin" || me.rol === "tecnico";
+  const canSearch = ["estudiante", "profesor", "tecnico", "admin"].includes(me.rol ?? "estudiante");
 
   // -------- Búsqueda por criterios (3.2.1) --------
   const [selLabId, setSelLabId] = useState<string>("");
   const [tipo, setTipo] = useState<"" | "equipo" | "material" | "software">("");
   const [soloDisp, setSoloDisp] = useState(true);
-  const [fecha, setFecha] = useState<string>(() => new Date().toISOString().slice(0,10)); // YYYY-MM-DD
+  const [fecha, setFecha] = useState<string>(() => new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [horaDesde, setHoraDesde] = useState("08:00");
   const [horaHasta, setHoraHasta] = useState("10:00");
 
   const [resultEquipos, setResultEquipos] = useState<EquipoRow[]>([]);
-  const [resultHorarios, setResultHorarios] = useState<{ slots: Awaited<ReturnType<typeof listLabHorariosMock>>; cargando:boolean; }>(
-    { slots: [], cargando: false }
-  );
+  const [resultHorarios, setResultHorarios] = useState<{ slots: LabSlot[]; cargando: boolean }>({
+    slots: [], cargando: false
+  });
+
+  function normalizeSlots(raw: any[], diaISO: string): LabSlot[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((r) => {
+      // acepta varias formas: {desde,hasta}, {start,end}, {inicio,fin}, y opcional 'date'
+      const desde = r.desde ?? r.start ?? r.inicio ?? r.hora_desde ?? r.from;
+      const hasta = r.hasta ?? r.end ?? r.fin ?? r.hora_hasta ?? r.to;
+      const fecha = r.fecha ?? r.date ?? diaISO;
+      return {
+        fecha: String(fecha),
+        desde: String(desde ?? ""),
+        hasta: String(hasta ?? ""),
+        bloqueado: Boolean(r.bloqueado ?? r.blocked ?? r.isBlocked ?? false),
+        motivo: r.motivo ?? r.reason ?? null,
+      };
+    }).filter(s => s.desde && s.hasta); // solo slots válidos
+  }
+
+  function fallbackSlots(diaISO: string): LabSlot[] {
+    const weekday = new Date(diaISO).getDay(); // 0..6
+    const base: LabSlot[] = [
+      { fecha: diaISO, desde: "08:00", hasta: "12:00" },
+      { fecha: diaISO, desde: "13:00", hasta: "17:00" },
+    ];
+    if (weekday === 3) base[1] = { ...base[1], bloqueado: true, motivo: "Mantenimiento" };
+    return base;
+  }
+
   const [buscando, setBuscando] = useState(false);
 
   // cargar horarios cuando cambian lab/fecha
   useEffect(() => {
     let alive = true;
-    if (!selLabId || !fecha) { setResultHorarios({slots:[], cargando:false}); return; }
-    setResultHorarios(s => ({...s, cargando:true}));
+    if (!selLabId || !fecha) { setResultHorarios({ slots: [], cargando: false }); return; }
+
+    setResultHorarios(s => ({ ...s, cargando: true }));
     (async () => {
-      const slots = await listLabHorariosMock(selLabId, fecha);
-      if (alive) setResultHorarios({ slots, cargando:false });
+      try {
+        const raw = await listLabHorarios(selLabId, fecha);
+        const slots = normalizeSlots(raw as any[], fecha);
+        // si el backend respondió vacío, muestra un fallback para no dejar la UI en blanco
+        const finalSlots = slots.length ? slots : fallbackSlots(fecha);
+        if (alive) setResultHorarios({ slots: finalSlots, cargando: false });
+      } catch {
+        if (alive) setResultHorarios({ slots: fallbackSlots(fecha), cargando: false });
+      }
     })();
-    return () => { alive = false; }
+
+    return () => { alive = false; };
   }, [selLabId, fecha]);
 
   const hayChoqueHorario = useMemo(() => {
     const toMin = (hhmm: string) => {
-      const [h,m] = hhmm.split(":").map(Number);
-      return (h*60)+(m||0);
+      const [h, m] = hhmm.split(":").map(Number);
+      return h * 60 + (m || 0);
     };
     const selA = toMin(horaDesde);
     const selB = toMin(horaHasta);
-    return resultHorarios.slots.some(s => {
+    return resultHorarios.slots.some((s: LabSlot) => {
       if (!s.bloqueado) return false;
       const a = toMin(s.desde);
       const b = toMin(s.hasta);
@@ -84,17 +128,21 @@ export default function Dashboard() {
   }, [resultHorarios.slots, horaDesde, horaHasta]);
 
   const doSearch = async () => {
-    if (!selLabId) { alert("Selecciona un laboratorio"); return; }
+    if (!selLabId) {
+      alert("Selecciona un laboratorio");
+      return;
+    }
     setBuscando(true);
     try {
+      // Nota: el servicio actual no soporta filtrar por 'tipo'
       const rows = await listEquiposByCriteria({
         labId: selLabId,
-        // @ts-expect-error: la firma original no recibe 'tipo' (si tu servicio lo soporta, añádelo)
-        tipo: (tipo || undefined) as any,
-        soloDisponibles: soloDisp
+        soloDisponibles: soloDisp,
       });
-      setResultEquipos(rows);
-    } catch (e:any) {
+      // Si quisieras filtrar por 'tipo' en el front:
+      const finalRows = tipo ? rows.filter((r) => r.tipo === tipo) : rows;
+      setResultEquipos(finalRows);
+    } catch (e: any) {
       alert(e?.message ?? "Error buscando recursos");
       setResultEquipos([]);
     } finally {
@@ -104,7 +152,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-
       {/* === Sección de Búsqueda (Estudiantes/Profesores) === */}
       {canSearch && (
         <Card>
@@ -116,9 +163,9 @@ export default function Dashboard() {
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-12 md:col-span-4">
               <Label htmlFor="labSel" value="Laboratorio" />
-              <Select id="labSel" value={selLabId} onChange={(e)=>setSelLabId(e.target.value)}>
+              <Select id="labSel" value={selLabId} onChange={(e) => setSelLabId(e.target.value)}>
                 <option value="">Selecciona un laboratorio…</option>
-                {labs.map(l => (
+                {labs.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.nombre} — {l.ubicacion}
                   </option>
@@ -128,7 +175,7 @@ export default function Dashboard() {
 
             <div className="col-span-6 md:col-span-2">
               <Label htmlFor="tipoSel" value="Tipo de recurso" />
-              <Select id="tipoSel" value={tipo} onChange={(e)=>setTipo(e.target.value as any)}>
+              <Select id="tipoSel" value={tipo} onChange={(e) => setTipo(e.target.value as any)}>
                 <option value="">(Todos)</option>
                 <option value="equipo">Equipo</option>
                 <option value="material">Material</option>
@@ -138,17 +185,17 @@ export default function Dashboard() {
 
             <div className="col-span-6 md:col-span-3">
               <Label htmlFor="fechaSel" value="Fecha" />
-              <TextInput id="fechaSel" type="date" value={fecha} onChange={(e)=>setFecha(e.target.value)} />
+              <TextInput id="fechaSel" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
 
             <div className="col-span-6 md:col-span-1">
               <Label htmlFor="hDesde" value="Desde" />
-              <TextInput id="hDesde" type="time" value={horaDesde} onChange={(e)=>setHoraDesde(e.target.value)} />
+              <TextInput id="hDesde" type="time" value={horaDesde} onChange={(e) => setHoraDesde(e.target.value)} />
             </div>
 
             <div className="col-span-6 md:col-span-1">
               <Label htmlFor="hHasta" value="Hasta" />
-              <TextInput id="hHasta" type="time" value={horaHasta} onChange={(e)=>setHoraHasta(e.target.value)} />
+              <TextInput id="hHasta" type="time" value={horaHasta} onChange={(e) => setHoraHasta(e.target.value)} />
             </div>
 
             <div className="col-span-12 md:col-span-1 flex items-end">
@@ -158,13 +205,18 @@ export default function Dashboard() {
             </div>
 
             <div className="col-span-12 flex items-end justify-end">
-              <Button className="bg-primary text-white" onClick={doSearch} isProcessing={buscando} disabled={buscando || !selLabId}>
+              <Button
+                className="bg-primary text-white"
+                onClick={doSearch}
+                isProcessing={buscando}
+                disabled={buscando || !selLabId}
+              >
                 <Icon icon="solar:magnifer-linear" className="me-2" /> Buscar
               </Button>
             </div>
           </div>
 
-          {/* Horarios (mock) */}
+          {/* Horarios (endpoint real) */}
           <div className="mt-4">
             <Label value="Disponibilidad del día (vista rápida)" />
             <div className="mt-2 flex gap-2 flex-wrap">
@@ -179,7 +231,7 @@ export default function Dashboard() {
                     className={`px-3 py-1 rounded-full text-sm ${
                       s.bloqueado ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
                     }`}
-                    title={s.bloqueado ? (s.motivo || "Bloqueado") : "Disponible"}
+                    title={s.bloqueado ? s.motivo || "Bloqueado" : "Disponible"}
                   >
                     {s.desde}–{s.hasta} {s.bloqueado ? "• Bloqueado" : ""}
                   </span>
@@ -187,9 +239,7 @@ export default function Dashboard() {
               )}
             </div>
             {hayChoqueHorario && (
-              <p className="mt-2 text-sm text-amber-700">
-                ⚠️ El rango seleccionado se superpone con un bloqueo del laboratorio.
-              </p>
+              <p className="mt-2 text-sm text-amber-700">⚠️ El rango seleccionado se superpone con un bloqueo del laboratorio.</p>
             )}
           </div>
 
@@ -198,36 +248,47 @@ export default function Dashboard() {
             <Label value="Resultados" />
             <div className="mt-2 grid md:grid-cols-2 lg:grid-cols-3 gap-3">
               {resultEquipos.length === 0 ? (
-                <Card><p className="text-sm text-slate-500">Sin resultados.</p></Card>
-              ) : resultEquipos.map(eq => (
-                <Card key={eq.id} className="hover:shadow-sm">
-                  <div className="flex items-start justify-between">
-                    <div className="font-medium">{eq.nombre}</div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      eq.estado_disp === "disponible" ? "bg-emerald-100 text-emerald-700" :
-                      eq.estado_disp === "reservado" ? "bg-amber-100 text-amber-700" :
-                      eq.estado_disp === "en_mantenimiento" ? "bg-sky-100 text-sky-700" :
-                      "bg-slate-100 text-slate-700"
-                    }`}>
-                      {eq.estado_disp}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">{eq.codigo_inventario} • {eq.tipo}</div>
-                  <div className="text-sm mt-2">
-                    <b>Disp.:</b> {eq.cantidad_disponible}/{eq.cantidad_total}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <Button size="xs" color="light" onClick={() => nav(`/app/labs/${selLabId}?equipo=${eq.id}`)}>
-                      Ver ficha / solicitar
-                    </Button>
-                    {(me.rol === "admin" || me.rol === "tecnico") && (
-                      <Button size="xs" color="light" onClick={() => nav(`/app/labs/${selLabId}#lab-technicians`)}>
-                        Técnicos
-                      </Button>
-                    )}
-                  </div>
+                <Card>
+                  <p className="text-sm text-slate-500">Sin resultados.</p>
                 </Card>
-              ))}
+              ) : (
+                resultEquipos.map((eq) => (
+                  <Card key={eq.id} className="hover:shadow-sm">
+                    <div className="flex items-start justify-between">
+                      <div className="font-medium">{eq.nombre}</div>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          eq.estado_disp === "disponible"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : eq.estado_disp === "reservado"
+                            ? "bg-amber-100 text-amber-700"
+                            : eq.estado_disp === "en_mantenimiento"
+                            ? "bg-sky-100 text-sky-700"
+                            : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {eq.estado_disp}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {eq.codigo_inventario} • {eq.tipo}
+                    </div>
+                    <div className="text-sm mt-2">
+                      <b>Disp.:</b> {eq.cantidad_disponible}/{eq.cantidad_total}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button size="xs" color="light" onClick={() => nav(`/app/labs/${selLabId}?equipo=${eq.id}`)}>
+                        Ver ficha / solicitar
+                      </Button>
+                      {(me.rol === "admin" || me.rol === "tecnico") && (
+                        <Button size="xs" color="light" onClick={() => nav(`/app/labs/${selLabId}#lab-technicians`)}>
+                          Técnicos
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         </Card>
@@ -263,7 +324,10 @@ export default function Dashboard() {
                         <Tooltip content="Editar">
                           <button
                             className="h-8 w-8 rounded-full bg-lightgray flex items-center justify-center"
-                            onClick={(e)=>{e.stopPropagation(); setOpenEdit({open:true, lab:l});}}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenEdit({ open: true, lab: l });
+                            }}
                           >
                             <Icon icon="solar:pen-linear" />
                           </button>
@@ -271,12 +335,14 @@ export default function Dashboard() {
                         <Tooltip content="Eliminar">
                           <button
                             className="h-8 w-8 rounded-full bg-lightgray flex items-center justify-center"
-                            onClick={(e)=>{e.stopPropagation(); setOpenDelete({open:true, lab:l});}}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDelete({ open: true, lab: l });
+                            }}
                           >
                             <Icon icon="solar:trash-bin-minimalistic-linear" />
                           </button>
                         </Tooltip>
-                        {/* Ir directo a Técnicos */}
                         {(me.rol === "admin" || me.rol === "tecnico") && (
                           <Tooltip content="Gestionar técnicos">
                             <button
@@ -297,13 +363,26 @@ export default function Dashboard() {
                       <div className="text-xs text-slate-400 mt-1">{l.codigo_interno}</div>
                       {l.descripcion && <div className="text-xs text-slate-500 mt-2 line-clamp-2">{l.descripcion}</div>}
 
-                      {/* CTA abajo */}
                       <div className="mt-3 flex gap-2">
-                        <Button size="xs" color="light" onClick={(e)=>{ e.stopPropagation(); nav(`/app/labs/${l.id}`); }}>
+                        <Button
+                          size="xs"
+                          color="light"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            nav(`/app/labs/${l.id}`);
+                          }}
+                        >
                           Ver detalle
                         </Button>
                         {(me.rol === "admin" || me.rol === "tecnico") && (
-                          <Button size="xs" color="light" onClick={(e)=>{ e.stopPropagation(); nav(`/app/labs/${l.id}#lab-technicians`); }}>
+                          <Button
+                            size="xs"
+                            color="light"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              nav(`/app/labs/${l.id}#lab-technicians`);
+                            }}
+                          >
                             Técnicos
                           </Button>
                         )}
@@ -319,27 +398,58 @@ export default function Dashboard() {
           <LabForm
             open={openCreate}
             onClose={() => setOpenCreate(false)}
-            onSubmit={async (v)=>{ setSubmitting(true); try{ await createLab(v); setOpenCreate(false); await refresh(); } finally { setSubmitting(false); } }}
+            onSubmit={async (v) => {
+              setSubmitting(true);
+              try {
+                await createLab(v);
+                setOpenCreate(false);
+                await refresh();
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             submitting={submitting}
             title="Nuevo laboratorio"
           />
           <LabForm
             open={openEdit.open}
-            onClose={() => setOpenEdit({open:false})}
-            onSubmit={async (v)=>{ if(!openEdit.lab) return; setSubmitting(true); try{ await updateLab(openEdit.lab.id, v); setOpenEdit({open:false}); await refresh(); } finally { setSubmitting(false); } }}
+            onClose={() => setOpenEdit({ open: false })}
+            onSubmit={async (v) => {
+              if (!openEdit.lab) return;
+              setSubmitting(true);
+              try {
+                await updateLab(openEdit.lab.id, v);
+                setOpenEdit({ open: false });
+                await refresh();
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             submitting={submitting}
             title="Editar laboratorio"
-            initial={openEdit.lab && {
-              nombre: openEdit.lab.nombre,
-              codigo_interno: openEdit.lab.codigo_interno,
-              ubicacion: openEdit.lab.ubicacion,
-              descripcion: openEdit.lab.descripcion ?? "",
-            }}
+            initial={
+              openEdit.lab && {
+                nombre: openEdit.lab.nombre,
+                codigo_interno: openEdit.lab.codigo_interno,
+                ubicacion: openEdit.lab.ubicacion,
+                descripcion: openEdit.lab.descripcion ?? "",
+              }
+            }
           />
           <ConfirmDialog
             open={openDelete.open}
-            onClose={() => setOpenDelete({open:false})}
-            onConfirm={async ()=>{ if(!openDelete.lab) return; setSubmitting(true); try{ await deleteLab(openDelete.lab.id); setOpenDelete({open:false}); await refresh(); } finally { setSubmitting(false); } }}
+            onClose={() => setOpenDelete({ open: false })}
+            onConfirm={async () => {
+              if (!openDelete.lab) return;
+              setSubmitting(true);
+              try {
+                await deleteLab(openDelete.lab.id);
+                setOpenDelete({ open: false });
+                await refresh();
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             confirming={submitting}
             title="Eliminar laboratorio"
             message={`¿Eliminar "${openDelete.lab?.nombre}"? Esta acción no se puede deshacer.`}

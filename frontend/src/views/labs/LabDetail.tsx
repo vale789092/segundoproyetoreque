@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router";
 import { Card, Tabs, Badge } from "flowbite-react";
-import { getLab, listPolicies } from "@/services/labs";
+import { getLab, listLabPolicies, listLabTechnicians } from "@/services/labs";
 import TechniciansTable from "@/views/labs/TechniciansTable";
+import PoliciesTab from "@/views/labs/PoliciesTab";
 
 type RouteParams = { id?: string; labId?: string };
 
@@ -43,7 +44,7 @@ export default function LabDetail() {
     (async () => {
       setLoadingPols(true);
       try {
-        const rows = await listPolicies(labId);
+        const rows = await listLabPolicies(labId);
         if (!alive) return;
         setPols(Array.isArray(rows) ? rows : []);
       } finally {
@@ -108,48 +109,7 @@ export default function LabDetail() {
         </Tabs.Item>
 
         <Tabs.Item title="Políticas">
-          <div className="space-y-3">
-            {loadingPols ? (
-              <p>Cargando políticas…</p>
-            ) : pols.length === 0 ? (
-              <p className="text-sm text-slate-500">Este laboratorio no tiene políticas publicadas.</p>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {pols.map((p) => (
-                  <Card key={p.id} className="rounded-2xl">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">{p.nombre ?? "Política"}</h4>
-                      <Badge
-                        color={
-                          p.tipo === "seguridad"
-                            ? "red"
-                            : p.tipo === "academico"
-                            ? "indigo"
-                            : "gray"
-                        }
-                      >
-                        {p.tipo ?? "otro"}
-                      </Badge>
-                    </div>
-                    {p.descripcion && (
-                      <p className="text-sm text-slate-600">{p.descripcion}</p>
-                    )}
-                    <div className="text-xs text-slate-500 space-x-2">
-                      <Badge color={p.obligatorio ? "blue" : "gray"}>
-                        {p.obligatorio ? "Obligatorio" : "Opcional"}
-                      </Badge>
-                      {p.vigente_desde && (
-                        <span>Desde: {new Date(p.vigente_desde).toLocaleDateString()}</span>
-                      )}
-                      {p.vigente_hasta && (
-                        <span>Hasta: {new Date(p.vigente_hasta).toLocaleDateString()}</span>
-                      )}
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+          <PoliciesTab labId={labId} />
         </Tabs.Item>
 
         <Tabs.Item title="Equipos">
