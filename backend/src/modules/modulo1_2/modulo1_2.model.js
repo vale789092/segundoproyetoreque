@@ -139,8 +139,8 @@ export async function createHorario(
   return { id: rows[0].id };
 }
 
-// Listar franjas de un laboratorio
-export async function listHorarios(labId) {
+// listar franjas de un DOW específico (para quick view)
+export async function listHorariosByDow(labId, dow) {
   await assertLabExists(labId);
   const { rows } = await pool.query(
     `SELECT
@@ -150,9 +150,9 @@ export async function listHorarios(labId) {
        ${COL.horarios.fin}    AS hora_fin,
        ${COL.horarios.capacidad} AS capacidad_maxima
      FROM ${TB.horarios}
-    WHERE ${COL.horarios.labId}=$1
-    ORDER BY ${COL.horarios.dow} ASC, ${COL.horarios.inicio} ASC, ${COL.horarios.id} ASC`,
-    [labId]
+    WHERE ${COL.horarios.labId}=$1 AND ${COL.horarios.dow}=$2
+    ORDER BY ${COL.horarios.inicio} ASC, ${COL.horarios.id} ASC`,
+    [labId, dow]
   );
   return rows;
 }

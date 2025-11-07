@@ -1,10 +1,12 @@
 // src/views/labs/LabDetail.tsx
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router";
-import { Card, Tabs, Badge } from "flowbite-react";
-import { getLab, listLabPolicies, listLabTechnicians } from "@/services/labs";
+import { Card, Tabs } from "flowbite-react";
+import { getLab, listLabPolicies } from "@/services/labs";
 import TechniciansTable from "@/views/labs/TechniciansTable";
 import PoliciesTab from "@/views/labs/PoliciesTab";
+import HistoryTab from "@/views/labs/HistoryTab";
+import EquiposTab from "@/views/labs/EquiposTab";
 
 type RouteParams = { id?: string; labId?: string };
 
@@ -113,11 +115,11 @@ export default function LabDetail() {
         </Tabs.Item>
 
         <Tabs.Item title="Equipos">
-          <p>Pendiente de implementar.</p>
+          <EquiposTab labId={labId} />
         </Tabs.Item>
 
         <Tabs.Item title="Historial">
-          <p>Pendiente de implementar (GET /labs/:id/history).</p>
+          <HistoryTab labId={labId} />
         </Tabs.Item>
       </Tabs>
     </div>
