@@ -122,16 +122,7 @@ export async function getRequestById({ id, usuario_id, rol }) {
 
 /** Edita si es del usuario, está 'pendiente' y aún no inicia */
 export async function updateRequestOwned({ id, usuario_id, patch }) {
-
-  await assertNoDupForUser({
-    usuario_id,
-    recurso_id: next.recurso_id,
-    ini: next.fecha_uso_inicio,
-    fin: next.fecha_uso_fin,
-    excludeId: id, // <— permite editar la misma sin que choque consigo misma
-  });
-
-  // Leer solicitud con lock ligero
+  // Lee actual
   const cur = (await pool.query(
     `SELECT id, usuario_id, laboratorio_id, recurso_id, estado, fecha_uso_inicio, fecha_uso_fin
        FROM solicitudes WHERE id=$1`, [id]
@@ -141,15 +132,24 @@ export async function updateRequestOwned({ id, usuario_id, patch }) {
   if (cur.estado !== 'pendiente') return null;
   if (new Date(cur.fecha_uso_inicio) <= new Date()) return null;
 
-  // Campos permitidos
+  // Calcula "next" primero
   const next = {
-    laboratorio_id: patch.laboratorio_id ?? cur.laboratorio_id,
-    recurso_id:     patch.recurso_id     ?? cur.recurso_id,
-    fecha_uso_inicio: patch.fecha_uso_inicio ?? cur.fecha_uso_inicio,
-    fecha_uso_fin:    patch.fecha_uso_fin    ?? cur.fecha_uso_fin,
-    motivo:        patch.motivo ?? null,
-    adjuntos:      patch.adjuntos ?? null,
+    laboratorio_id:       patch.laboratorio_id       ?? cur.laboratorio_id,
+    recurso_id:           patch.recurso_id           ?? cur.recurso_id,
+    fecha_uso_inicio:     patch.fecha_uso_inicio     ?? cur.fecha_uso_inicio,
+    fecha_uso_fin:        patch.fecha_uso_fin        ?? cur.fecha_uso_fin,
+    motivo:               patch.motivo ?? null,
+    adjuntos:             patch.adjuntos ?? null,
   };
+
+  // Valida duplicidad / traslapes contra "next"
+  await assertNoDupForUser({
+    usuario_id,
+    recurso_id: next.recurso_id,
+    ini:        next.fecha_uso_inicio,
+    fin:        next.fecha_uso_fin,
+    excludeId:  id,
+  });
 
   await assertLab(next.laboratorio_id);
   ensureRangeOrder(next.fecha_uso_inicio, next.fecha_uso_fin);
@@ -170,6 +170,7 @@ export async function updateRequestOwned({ id, usuario_id, patch }) {
   await logHist(next.laboratorio_id, 'otro', { solicitud_id: id, evento: 'solicitud_actualizada', patch }, usuario_id);
   return rows[0];
 }
+
 
 /** Cancela (delete físico) si es del usuario, pendiente, futuro */
 export async function deletePendingOwned({ id, usuario_id }) {
@@ -237,3 +238,39 @@ async function assertNoDupForUser({ usuario_id, recurso_id, ini, fin, excludeId=
     throw e;
   }
 }
+
+// model
+export async function listRequestsAll({ estado, lab_id, q, limit = 50, offset = 0 }) {
+  const where = [];
+  const params = [];
+  let i = 1;
+
+  if (estado) { where.push(`s.estado = $${i++}`); params.push(estado); }
+  if (lab_id) { where.push(`s.laboratorio_id = $${i++}`); params.push(lab_id); }
+  if (q && String(q).trim()) {
+    where.push(`(LOWER(l.nombre) ILIKE $${i} OR LOWER(r.nombre) ILIKE $${i} OR r.codigo_inventario ILIKE $${i})`);
+    params.push(`%${String(q).toLowerCase()}%`); i++;
+  }
+
+  const lim = Math.max(1, Number(limit)  || 50);
+  const off = Math.max(0, Number(offset) || 0);
+  params.push(lim, off);
+
+  const sql = `
+    SELECT s.id, s.estado, s.creada_en, s.aprobada_en, s.fecha_uso_inicio, s.fecha_uso_fin,
+           s.usuario_id, u.nombre AS usuario_nombre, u.correo AS usuario_correo,
+           l.id AS lab_id, l.nombre AS lab_nombre,
+           r.id AS recurso_id, r.nombre AS recurso_nombre, r.codigo_inventario
+      FROM solicitudes s
+      JOIN laboratorios  l ON l.id = s.laboratorio_id
+      JOIN equipos_fijos r ON r.id = s.recurso_id
+      JOIN users         u ON u.id = s.usuario_id
+     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+     ORDER BY s.creada_en DESC
+     LIMIT $${i++} OFFSET $${i}
+  `;
+  const { rows } = await pool.query(sql, params);
+  return rows;
+}
+
+

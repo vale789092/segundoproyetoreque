@@ -40,6 +40,9 @@ const MisSolicitudes = Loadable(lazy(() => import('../views/operacion/MisSolicit
 
 // Historial (nuevo, en src/historial/)
 const MyHistory = Loadable(lazy(() => import('../historial/MyHistory')));
+//Aprobación (técnico/admin)
+const SolicitudesAdmin = Loadable(lazy(() => import('../views/operacion/SolicitudesAdmin')));
+
 
 const Router = [
   // Área protegida
@@ -56,10 +59,12 @@ const Router = [
       // Operación
       { path: '/app/reservas',        element: <Reservas /> },
       { path: '/app/mis-solicitudes', element: <MisSolicitudes /> },
+      { path: '/app/operacion/solicitudes-admin', element: <SolicitudesAdmin /> },
       { path: '/app/prestamos',       element: <Prestamos /> },
       { path: '/app/devoluciones',    element: <Devoluciones /> },
       { path: '/app/inventario',      element: <Inventario /> },
       { path: '/app/reportes',        element: <Reportes /> },
+      
 
       // Historial (nuevo)
       { path: '/app/historial',       element: <MyHistory /> },

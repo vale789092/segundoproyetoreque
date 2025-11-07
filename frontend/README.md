@@ -73,7 +73,7 @@ Profesor/Estudiante: solo lectura
 
 * Gestionar recursos fijos (equipos)
   **Endpoints:** `POST /labs/:labId/equipos`, `GET /labs/:labId/equipos`, `GET /labs/:labId/equipos/:equipoId`, `PATCH /labs/:labId/equipos/:equipoId`, `DELETE /labs/:labId/equipos/:equipoId`
-  **Estado:** Implementado parcialmente
+  **Estado:** Implementado
 
 * Bitácora de laboratorio
   **Endpoints:** `GET /labs/:labId/history`

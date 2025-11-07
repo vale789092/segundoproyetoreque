@@ -69,3 +69,53 @@ export async function cancelSolicitud(id: string): Promise<{ ok: boolean; id: st
   const { data } = await api.delete(`/requests/${id}`);
   return data as { ok: boolean; id: string; estado: SolicitudEstado };
 }
+
+// --- NUEVO: obtener una solicitud por ID (admin/tecnico permitido por backend) ---
+export async function getSolicitud(id: string): Promise<SolicitudRow & {
+  aprobada_en?: string | null;
+  fecha_devolucion?: string | null;
+  usuario_id?: string;
+  lab_ubicacion?: string;
+}> {
+  const { data } = await api.get(`/requests/${id}`);
+  return data;
+}
+
+// --- NUEVO: cambiar estado (admin/tecnico) ---
+export type SolicitudEstadoAdmin = "aprobada" | "rechazada" | "en_revision";
+
+export async function setSolicitudEstado(
+  id: string,
+  estado: SolicitudEstadoAdmin,
+  aprobada_en?: string | null
+): Promise<{ id: string; estado: SolicitudEstadoAdmin; aprobada_en?: string | null }> {
+  const { data } = await api.patch(`/requests/${id}/status`, { estado, aprobada_en });
+  return data;
+}
+
+
+export type SolicitudAdminRow = SolicitudRow & {
+  aprobada_en?: string | null;
+  usuario_id: string;
+  usuario_nombre?: string;
+  usuario_correo?: string;
+};
+
+export async function listSolicitudesAdmin(params?: {
+  estado?: SolicitudEstado; lab_id?: string; q?: string; limit?: number; offset?: number;
+}) {
+  const qs = new URLSearchParams();
+  if (params?.estado) qs.set("estado", params.estado);
+  if (params?.lab_id) qs.set("lab_id", params.lab_id);
+  if (params?.q) qs.set("q", params.q);
+  qs.set("limit", String(params?.limit ?? 50));
+  qs.set("offset", String(params?.offset ?? 0));
+  const { data } = await api.get(`/requests/admin/all?${qs.toString()}`);
+  return data;
+}
+
+export async function setSolicitudStatus(id: string, estado: "aprobada"|"rechazada"|"en_revision") {
+  const { data } = await api.patch(`/requests/${id}/status`, { estado });
+  return data as { id: string; estado: SolicitudEstado; aprobada_en?: string | null };
+}
+

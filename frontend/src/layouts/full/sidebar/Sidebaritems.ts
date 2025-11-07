@@ -23,8 +23,12 @@ const SidebarContent: SidebarSection[] = [
     heading: "Operación",
     children: [
       { id: "reservas",     title: "Reservas",     to: "/app/reservas",     roles: ["estudiante","profesor","tecnico","admin"] },
-      { id: "mis-solicitudes", title: "Mis solicitudes", to: "/app/mis-solicitudes", roles: ["estudiante","profesor","tecnico","admin"] },
+      { id: "mis-solicitudes", title: "Mis solicitudes", to: "/app/mis-solicitudes", roles: ["estudiante","profesor"] },
       { id: "mi-historial", title: "Mi historial", to: "/app/historial", roles: ["estudiante","profesor"] },
+
+      // Aprobación/gestión de solicitudes (solo técnico y admin)
+      { id: "solicitudes-admin", title: "Aprobación/Solicitudes", to: "/app/operacion/solicitudes-admin", roles: ["tecnico","admin"] },
+
       { id: "prestamos",    title: "Préstamos",    to: "/app/prestamos",    roles: ["profesor","tecnico","admin"] },
       { id: "devoluciones", title: "Devoluciones", to: "/app/devoluciones", roles: ["profesor","tecnico","admin"] },
       { id: "inventario",   title: "Inventario",   to: "/app/inventario",   roles: ["tecnico","admin"] },

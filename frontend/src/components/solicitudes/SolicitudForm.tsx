@@ -1,7 +1,7 @@
 // src/components/solicitudes/SolicitudForm.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Button, Label, Modal, Select, TextInput, Textarea } from "flowbite-react";
-import { listEquiposByCriteria, type EquipoRow, listLabHorariosMock } from "@/services/labs";
+import { listEquiposByCriteria, type EquipoRow, listLabHorarios } from "@/services/labs";
 
 type Props = {
   open: boolean;
@@ -54,7 +54,7 @@ export default function SolicitudForm({ open, onClose, onSubmit, labId = "", ini
     (async () => {
       setCargandoSlots(true);
       try {
-        const s = await listLabHorariosMock(labId, fecha);
+        const s = await listLabHorarios(labId, fecha);
         if (alive) setSlots(s);
       } finally { setCargandoSlots(false); }
     })();
