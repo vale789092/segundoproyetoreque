@@ -20,18 +20,18 @@ const Inventario   = Loadable(lazy(() => import('../views/operacion/Inventario')
 const Reportes     = Loadable(lazy(() => import('../views/operacion/Reportes')));
 
 // Utilities
-const Typography = Loadable(lazy(() => import("../views/typography/Typography")));
-const Table      = Loadable(lazy(() => import("../views/tables/Table")));
-const Alert      = Loadable(lazy(() => import("../views/alerts/Alerts")));
+const Typography = Loadable(lazy(() => import("../../templateArchive/typography/Typography")));
+const Table      = Loadable(lazy(() => import("../../templateArchive/tables/Table")));
+const Alert      = Loadable(lazy(() => import("../../templateArchive/alerts/Alerts")));
 const Perfil     = Loadable(lazy(() => import("../views/perfil/Perfil")));
 
 // Icons
-const Solar = Loadable(lazy(() => import("../views/icons/Solar")));
+const Solar = Loadable(lazy(() => import("../../templateArchive/icons/Solar")));
 
 // Auth
 const Login      = Loadable(lazy(() => import('../views/auth/login/Login')));
 const Register   = Loadable(lazy(() => import('../views/auth/register/Register')));
-const SamplePage = Loadable(lazy(() => import('../views/sample-page/SamplePage')));
+const SamplePage = Loadable(lazy(() => import('../../templateArchive/sample-page/SamplePage')));
 const ErrorPage  = Loadable(lazy(() => import('../views/auth/error/Error')));
 
 // Labs

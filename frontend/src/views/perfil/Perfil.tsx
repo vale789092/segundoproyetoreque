@@ -7,7 +7,7 @@ import {
   getUser as getStoredUser,
   setUser as setStoredUser,
 } from "@/services/storage";
-import RolePill from "src/components/shared/RolePill";
+import RolePill from "@/components/shared/RolePill";
 
 type Rol = "estudiante" | "profesor" | "tecnico" | "admin";
 

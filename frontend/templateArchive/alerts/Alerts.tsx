@@ -1,4 +1,4 @@
-import BasicAlerts from "src/components/alerts/BasicAlerts"
+import BasicAlerts from "templateArchive/alerts/BasicAlerts"
 
 
 const Alerts = () => {

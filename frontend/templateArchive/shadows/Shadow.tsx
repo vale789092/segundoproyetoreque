@@ -1,4 +1,4 @@
-import { AllShadows } from "src/components/shadows/AllShadows"
+import { AllShadows } from "templateArchive/shadows/AllShadows"
 
 
 const Shadow = () => {

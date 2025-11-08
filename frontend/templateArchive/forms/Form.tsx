@@ -1,5 +1,5 @@
 
-import BasicForm from 'src/components/forms/BasicForm'
+import BasicForm from 'templateArchive/forms/BasicForm'
 
 const Form = () => {
   return (

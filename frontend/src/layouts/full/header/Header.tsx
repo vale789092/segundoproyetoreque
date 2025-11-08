@@ -8,7 +8,7 @@ import { Drawer } from "flowbite-react";
 import MobileSidebar from "../sidebar/MobileSidebar";
 
 import { getUser } from "@/services/storage";
-import RolePill from "src/components/shared/RolePill";
+import RolePill from "@/components/shared/RolePill";
 
 
 const Header = () => {
