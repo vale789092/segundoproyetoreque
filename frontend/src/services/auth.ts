@@ -1,3 +1,4 @@
+//services/auth.ts
 import api, { parseError } from "./api";
 import { setToken, clearToken } from "./storage";
 import { setUser, clearUser } from "./storage"; // ← añade

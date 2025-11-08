@@ -117,3 +117,62 @@ export async function listMyHistory({ usuario_id, desde, hasta, tipo }) {
   );
   return rows;
 }
+
+// ========= Reportes institucionales (todos los labs) =========
+
+// Por periodo académico (I: ene-jun, II: jul-dic)
+const periodoExpr = `
+  CASE
+    WHEN EXTRACT(MONTH FROM ts) BETWEEN 1 AND 6 THEN CONCAT(EXTRACT(YEAR FROM ts)::text, ' - I')
+    ELSE CONCAT(EXTRACT(YEAR FROM ts)::text, ' - II')
+  END
+`;
+
+// Uso global por periodo académico (reservas / préstamos / mantenimientos)
+export async function getGlobalUsage({ from, to }) {
+  const f = from ?? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString();
+  const t = to   ?? new Date().toISOString();
+
+  // Normalizamos “ts” de cada tipo de evento sin filtrar por usuario
+  const unions = `
+    SELECT s.creada_en        AS ts, 'reserva'       AS tipo FROM solicitudes s
+      WHERE s.creada_en BETWEEN $1 AND $2
+    UNION ALL
+    SELECT s.fecha_uso_inicio AS ts, 'prestamo'      AS tipo FROM solicitudes s
+      WHERE s.fecha_uso_inicio BETWEEN $1 AND $2
+    UNION ALL
+    SELECT m.creado_en        AS ts, 'mantenimiento' AS tipo FROM mantenimientos m
+      WHERE m.creado_en BETWEEN $1 AND $2
+  `;
+
+  const sql = `
+    WITH eventos AS (${unions})
+    SELECT ${periodoExpr} AS periodo,
+           SUM(CASE WHEN tipo='reserva' THEN 1 ELSE 0 END)       AS reservas,
+           SUM(CASE WHEN tipo='prestamo' THEN 1 ELSE 0 END)      AS prestamos,
+           SUM(CASE WHEN tipo='mantenimiento' THEN 1 ELSE 0 END) AS mantenimientos
+    FROM eventos
+    GROUP BY periodo
+    ORDER BY MIN(ts) ASC
+  `;
+
+  const { rows } = await pool.query(sql, [f, t]);
+  return rows;
+}
+
+// Snapshot de inventario institucional (todos los recursos visibles)
+export async function getInventorySnapshot() {
+  const { rows } = await pool.query(`
+    SELECT
+      l.id              AS lab_id,
+      l.nombre          AS lab_nombre,
+      e.id              AS recurso_id,
+      e.nombre          AS recurso_nombre,
+      COALESCE(e.estado, 'disponible') AS estado,
+      COALESCE(e.ubicacion, '')        AS ubicacion
+    FROM laboratorios l
+    JOIN equipos_fijos e ON e.laboratorio_id = l.id
+    ORDER BY l.nombre, e.nombre
+  `);
+  return rows;
+}
