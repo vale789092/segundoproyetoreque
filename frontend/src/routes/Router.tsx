@@ -10,7 +10,7 @@ const BlankLayout = Loadable(lazy(() => import('../layouts/blank/BlankLayout')))
 const Protected   = Loadable(lazy(() => import('./Protected')));
 
 // Dashboard
-const Dashboard   = Loadable(lazy(() => import('../views/dashboards/Dashboard')));
+const Dashboard   = Loadable(lazy(() => import('../views/Home')));
 
 // Operaciones
 const Reservas     = Loadable(lazy(() => import('../views/operacion/Reservas')));
