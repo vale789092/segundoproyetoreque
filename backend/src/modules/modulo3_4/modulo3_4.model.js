@@ -6,6 +6,10 @@ import { pool } from "../../db/index.js";
  * soporta filtros por rango y tipo.
  */
 export async function getMyUsage({ userId, from, to, tipo = "all" }) {
+  
+  const normalize = (v) =>
+    typeof v === "string" && v.trim() === "" ? undefined : v;
+
   // Rango por defecto: últimos 90 días
   const qFrom = from ?? new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
   const qTo   = to   ?? new Date().toISOString();
@@ -130,10 +134,15 @@ const periodoExpr = `
 
 // Uso global por periodo académico (reservas / préstamos / mantenimientos)
 export async function getGlobalUsage({ from, to }) {
-  const f = from ?? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString();
-  const t = to   ?? new Date().toISOString();
+  const normalize = (v) => {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === "string" && v.trim() === "") return undefined;
+    return v;
+  };
 
-  // Normalizamos “ts” de cada tipo de evento sin filtrar por usuario
+  const f = normalize(from) ?? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString();
+  const t = normalize(to)   ?? new Date().toISOString();
+
   const unions = `
     SELECT s.creada_en        AS ts, 'reserva'       AS tipo FROM solicitudes s
       WHERE s.creada_en BETWEEN $1 AND $2
@@ -159,6 +168,7 @@ export async function getGlobalUsage({ from, to }) {
   const { rows } = await pool.query(sql, [f, t]);
   return rows;
 }
+
 
 // Snapshot de inventario institucional (todos los recursos visibles)
 export async function getInventorySnapshot() {
