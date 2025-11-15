@@ -9,6 +9,7 @@ import {
   downloadUsoGlobalPdf,
   getInventario,
   downloadInventarioXlsx,
+  downloadInventarioPdf,           
   getMyUsage,
   downloadMyUsageXlsx,
   downloadMyUsagePdf,
@@ -69,6 +70,10 @@ export default function Reportes() {
     if (m === "inventario") nav("/app/reportes/inventario");
   };
 
+  // 💄 Estilo común para TODOS los botones de acción
+  const actionBtnClass =
+    "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 focus:ring-2 focus:ring-cyan-500";
+
   // filtros comunes
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -88,6 +93,7 @@ export default function Reportes() {
   const [downGlobalXlsx, setDownGlobalXlsx] = useState(false);
   const [downGlobalPdf, setDownGlobalPdf] = useState(false);
   const [downInventarioXlsx, setDownInventarioXlsx] = useState(false);
+  const [downInventarioPdf, setDownInventarioPdf] = useState(false); // 👈 NUEVO
 
   // Rango por defecto: “todo lo posible”
   const DEFAULT_FROM_ALL = "2000-01-01";
@@ -100,7 +106,6 @@ export default function Reportes() {
       tipo?: "all" | "solicitudes" | "uso" | "devolucion";
     } = {};
 
-    // Si NO hay fechas elegidas, pedimos TODO el historial
     if (!from && !to) {
       params.from = DEFAULT_FROM_ALL;
       params.to = todayStr;
@@ -109,16 +114,13 @@ export default function Reportes() {
       if (to) params.to = to;
     }
 
-    // siempre mandamos tipo (tiene valor por defecto "all")
     params.tipo = tipo;
-
     return params;
   };
 
   const buildGlobalParams = () => {
     const params: { from?: string; to?: string } = {};
 
-    // Igual lógica: sin filtros → todo el historial
     if (!from && !to) {
       params.from = DEFAULT_FROM_ALL;
       params.to = todayStr;
@@ -129,7 +131,6 @@ export default function Reportes() {
 
     return params;
   };
-
 
   // --------- RESUMEN: cargar bitácora personal ---------
   const handleFetchMyUsage = async () => {
@@ -170,7 +171,6 @@ export default function Reportes() {
     }
   };
 
-  // Disparar fetch automático al entrar en cada tab
   useEffect(() => {
     if (mode === "resumen") handleFetchMyUsage();
     if (mode === "global") handleFetchGlobal();
@@ -210,10 +210,7 @@ export default function Reportes() {
     try {
       setDownGlobalXlsx(true);
       const blob = await downloadUsoGlobalXlsx(buildGlobalParams());
-      downloadBlob(
-        blob,
-        `UsoGlobal_${from || "na"}-a-${to || "na"}.xlsx`
-      );
+      downloadBlob(blob, `UsoGlobal_${from || "na"}-a-${to || "na"}.xlsx`);
     } catch (err) {
       console.error(err);
     } finally {
@@ -247,6 +244,19 @@ export default function Reportes() {
     }
   };
 
+  const handleViewInventarioPdf = async () => {
+    try {
+      setDownInventarioPdf(true);
+      const blob = await downloadInventarioPdf();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDownInventarioPdf(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-2xl font-semibold">Reportes institucionales</h2>
@@ -262,112 +272,122 @@ export default function Reportes() {
       </Tabs>
 
       <Card>
-  <div className="flex flex-wrap items-end gap-4">
-    <div>
-      <Label htmlFor="from" value="Desde" />
-      <TextInput
-        id="from"
-        type="date"
-        value={from}
-        onChange={(e) => setFrom(e.target.value)}
-      />
-    </div>
-    <div>
-      <Label htmlFor="to" value="Hasta" />
-      <TextInput
-        id="to"
-        type="date"
-        value={to}
-        onChange={(e) => setTo(e.target.value)}
-      />
-    </div>
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <Label htmlFor="from" value="Desde" />
+            <TextInput
+              id="from"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="to" value="Hasta" />
+            <TextInput
+              id="to"
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </div>
 
-{/* === Controles RESUMEN === */}
-{mode === "resumen" && (
-  <div className="flex flex-wrap items-end gap-3">
-    <div>
-      <Label htmlFor="tipo" value="Tipo" />
-      <Select
-        id="tipo"
-        value={tipo}
-        onChange={(e) => setTipo(e.target.value as any)}
-      >
-        <option value="all">Todo</option>
-        <option value="solicitudes">Solicitudes</option>
-        <option value="uso">Uso</option>
-        <option value="devolucion">Devoluciones</option>
-      </Select>
-    </div>
+          {/* === Controles RESUMEN === */}
+          {mode === "resumen" && (
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <Label htmlFor="tipo" value="Tipo" />
+                <Select
+                  id="tipo"
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value as any)}
+                >
+                  <option value="all">Todo</option>
+                  <option value="solicitudes">Solicitudes</option>
+                  <option value="uso">Uso</option>
+                  <option value="devolucion">Devoluciones</option>
+                </Select>
+              </div>
 
-    <Button
-      color="light"
-      onClick={handleFetchMyUsage}
-      isProcessing={loadingMy}
-    >
-      Actualizar
-    </Button>
-    <Button
-      color="light"
-      onClick={handleDownloadMyXlsx}
-      isProcessing={downMyXlsx}
-    >
-      Descargar XLSX
-    </Button>
-    <Button
-      color="light"
-      onClick={handleViewMyPdf}
-      isProcessing={downMyPdf}
-    >
-      Ver PDF
-    </Button>
-  </div>
-)}
+              <Button
+                className={actionBtnClass}
+                onClick={handleFetchMyUsage}
+                isProcessing={loadingMy}
+              >
+                Actualizar
+              </Button>
+              <Button
+                className={actionBtnClass}
+                onClick={handleDownloadMyXlsx}
+                isProcessing={downMyXlsx}
+              >
+                Descargar XLSX
+              </Button>
+              <Button
+                className={actionBtnClass}
+                onClick={handleViewMyPdf}
+                isProcessing={downMyPdf}
+              >
+                Ver PDF
+              </Button>
+            </div>
+          )}
 
+          {/* === Controles USO GLOBAL === */}
+          {mode === "global" && (
+            <div className="flex flex-wrap items-end gap-3">
+              <Button
+                className={actionBtnClass}
+                onClick={handleFetchGlobal}
+                isProcessing={loadingGlobal}
+              >
+                Actualizar
+              </Button>
+              <Button
+                className={actionBtnClass}
+                onClick={handleDownloadGlobalXlsx}
+                isProcessing={downGlobalXlsx}
+              >
+                Descargar XLSX
+              </Button>
+              <Button
+                className={actionBtnClass}
+                onClick={handleViewGlobalPdf}
+                isProcessing={downGlobalPdf}
+              >
+                Ver PDF
+              </Button>
+            </div>
+          )}
 
-
-{/* === Controles USO GLOBAL === */}
-{mode === "global" && (
-  <div className="flex flex-wrap items-end gap-3">
-    <Button
-      color="light"
-      onClick={handleFetchGlobal}
-      isProcessing={loadingGlobal}
-    >
-      Actualizar
-    </Button>
-    <Button
-      color="light"
-      onClick={handleDownloadGlobalXlsx}
-      isProcessing={downGlobalXlsx}
-    >
-      Descargar XLSX
-    </Button>
-    <Button
-      color="light"
-      onClick={handleViewGlobalPdf}
-      isProcessing={downGlobalPdf}
-    >
-      Ver PDF
-    </Button>
-  </div>
-)}
-
-{/* === Controles INVENTARIO === */}
-{mode === "inventario" && (
-  <div className="flex flex-wrap items-end gap-3">
-    <Button
-      color="light"
-      onClick={handleDownloadInventarioXlsx}
-      isProcessing={downInventarioXlsx}
-    >
-      Descargar XLSX
-    </Button>
-  </div>
-)}
-
-  </div>
-</Card>
-
+          {/* === Controles INVENTARIO === */}
+          {mode === "inventario" && (
+            <div className="flex flex-wrap items-end gap-3">
+              <Button
+                className={actionBtnClass}
+                onClick={handleFetchInventario}
+                isProcessing={loadingInventario}
+              >
+                Actualizar
+              </Button>
+              <Button
+                className={actionBtnClass}
+                onClick={handleDownloadInventarioXlsx}
+                isProcessing={downInventarioXlsx}
+              >
+                Descargar XLSX
+              </Button>
+              <Button
+                className={actionBtnClass}
+                onClick={handleViewInventarioPdf}
+                isProcessing={downInventarioPdf}
+              >
+                Ver PDF
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* RESUMEN (bitácora personal) */}
       {mode === "resumen" && (

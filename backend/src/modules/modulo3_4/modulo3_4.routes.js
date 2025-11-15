@@ -3,8 +3,9 @@ import { requireAuth } from "../../middleware/auth.js";
 import {
   myUsageCtrl, myUsageXlsxCtrl, myUsagePdfCtrl,
   globalUsageCtrl, globalUsageXlsxCtrl, globalUsagePdfCtrl,
-  inventoryCtrl, inventoryXlsxCtrl
+  inventoryCtrl, inventoryXlsxCtrl, inventoryPdfCtrl   
 } from "./modulo3_4.controller.js";
+
 import * as C from "./modulo3_4.controller.js";
 
 const router = Router();
@@ -31,5 +32,6 @@ router.get("/global-usage.pdf",   allowInstitutional, globalUsagePdfCtrl);
 // inventario institucional
 router.get("/inventory",          allowInstitutional, inventoryCtrl);
 router.get("/inventory.xlsx",     allowInstitutional, inventoryXlsxCtrl);
+router.get("/inventory.pdf",      allowInstitutional, inventoryPdfCtrl); 
 
 export default router;

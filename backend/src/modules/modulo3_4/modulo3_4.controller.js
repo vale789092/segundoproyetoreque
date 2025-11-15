@@ -454,3 +454,46 @@ export async function globalUsagePdfCtrl(req, res, next) {
     doc.end();
   } catch (e) { next(e); }
 }
+
+export async function inventoryPdfCtrl(_req, res, next) {
+  try {
+    const rows = await getInventorySnapshot();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'inline; filename="InventarioInstitucional.pdf"'
+    );
+
+    const doc = new PDFDocument({
+      size: "A4",
+      layout: "portrait",
+      margins: { top: 40, right: 40, bottom: 40, left: 40 },
+    });
+
+    doc.pipe(res);
+
+    doc.font("Helvetica-Bold").fontSize(14).text("Inventario institucional – LabTEC");
+    doc.moveDown(0.5);
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .text(`Total de recursos: ${rows.length}`);
+    doc.moveDown(0.5);
+
+    rows.forEach((r, idx) => {
+      const linea =
+        `${idx + 1}. ` +
+        `${r.lab_nombre ?? ""} (${r.lab_id ?? ""})  |  ` +
+        `${r.recurso_nombre ?? ""} (${r.recurso_id ?? ""})  |  ` +
+        `Estado: ${r.estado ?? ""}  |  ` +
+        `Ubicación: ${r.ubicacion ?? ""}`;
+      doc.text(linea);
+      doc.moveDown(0.2);
+    });
+
+    doc.end();
+  } catch (e) {
+    next(e);
+  }
+}

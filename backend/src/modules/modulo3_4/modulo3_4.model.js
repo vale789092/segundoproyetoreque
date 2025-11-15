@@ -7,16 +7,23 @@ import { pool } from "../../db/index.js";
  */
 export async function getMyUsage({ userId, from, to, tipo = "all" }) {
   
-  const normalize = (v) =>
-    typeof v === "string" && v.trim() === "" ? undefined : v;
+  const normalize = (v) => {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === "string" && v.trim() === "") return undefined;
+    return v;
+  };
 
-  // Rango por defecto: últimos 90 días
-  const qFrom =
-    normalize(from) ??
-    new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-  const qTo =
-    normalize(to) ??
-    new Date().toISOString();
+  // Antes: últimos 90 días
+  // const qFrom =
+  //   normalize(from) ??
+  //   new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+  // const qTo =
+  //   normalize(to) ??
+  //   new Date().toISOString();
+
+  // Ahora: todo el historial por defecto
+  const qFrom = normalize(from) ?? "2000-01-01T00:00:00.000Z";
+  const qTo   = normalize(to)   ?? new Date().toISOString();
 
   // Descomponemos filtro de tipo en flags
   const wantSolic = (tipo === "all" || tipo === "solicitudes");

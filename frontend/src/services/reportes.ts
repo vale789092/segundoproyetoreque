@@ -95,3 +95,10 @@ export async function downloadInventarioXlsx() {
   });
   return res.data as Blob;
 }
+
+export async function downloadInventarioPdf() {
+  const res = await api.get("/history/inventory.pdf", {
+    responseType: "blob",
+  });
+  return res.data as Blob;
+}
