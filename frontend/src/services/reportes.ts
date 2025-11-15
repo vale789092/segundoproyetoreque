@@ -29,6 +29,52 @@ export async function downloadUsoGlobalPdf(params?: { from?: string; to?: string
   return res.data as Blob;
 }
 
+/* ---------- RESUMEN (bitácora personal) ---------- */
+
+export type MyUsageRow = {
+  solicitud_id: string | null;
+  tipo_evento: string;
+  ts: string; // ISO
+  estado: string | null;
+  laboratorio: { id: string | null; nombre: string | null } | null;
+  recurso: { id: string | null; nombre: string | null } | null;
+};
+
+export async function getMyUsage(params?: {
+  from?: string;
+  to?: string;
+  tipo?: "all" | "solicitudes" | "uso" | "devolucion";
+}) {
+  const { data } = await api.get("/history/my-usage", { params });
+  return data as MyUsageRow[];
+}
+
+export async function downloadMyUsageXlsx(params?: {
+  from?: string;
+  to?: string;
+  tipo?: "all" | "solicitudes" | "uso" | "devolucion";
+}) {
+  const res = await api.get("/history/my-usage.xlsx", {
+    params,
+    responseType: "blob",
+  });
+  return res.data as Blob;
+}
+
+export async function downloadMyUsagePdf(params?: {
+  from?: string;
+  to?: string;
+  tipo?: "all" | "solicitudes" | "uso" | "devolucion";
+}) {
+  const res = await api.get("/history/my-usage.pdf", {
+    params,
+    responseType: "blob",
+  });
+  return res.data as Blob;
+}
+
+/* ---------- INVENTARIO ---------- */
+
 export type InventarioRow = {
   lab_id: string;
   lab_nombre: string;

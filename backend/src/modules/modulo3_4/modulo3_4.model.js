@@ -11,8 +11,12 @@ export async function getMyUsage({ userId, from, to, tipo = "all" }) {
     typeof v === "string" && v.trim() === "" ? undefined : v;
 
   // Rango por defecto: últimos 90 días
-  const qFrom = from ?? new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-  const qTo   = to   ?? new Date().toISOString();
+  const qFrom =
+    normalize(from) ??
+    new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+  const qTo =
+    normalize(to) ??
+    new Date().toISOString();
 
   // Descomponemos filtro de tipo en flags
   const wantSolic = (tipo === "all" || tipo === "solicitudes");
@@ -171,18 +175,25 @@ export async function getGlobalUsage({ from, to }) {
 
 
 // Snapshot de inventario institucional (todos los recursos visibles)
+// backend/src/modules/modulo3_4/modulo3_4.model.js
 export async function getInventorySnapshot() {
   const { rows } = await pool.query(`
     SELECT
-      l.id              AS lab_id,
-      l.nombre          AS lab_nombre,
-      e.id              AS recurso_id,
-      e.nombre          AS recurso_nombre,
-      COALESCE(e.estado, 'disponible') AS estado,
-      COALESCE(e.ubicacion, '')        AS ubicacion
+      l.id        AS lab_id,
+      l.nombre    AS lab_nombre,
+      e.id        AS recurso_id,
+      e.nombre    AS recurso_nombre,
+      -- combinamos disponibilidad + estado operativo (ej: "disponible / operativo")
+      (e.estado_disp || ' / ' || e.estado_operativo) AS estado,
+      -- ubicación física del laboratorio
+      l.ubicacion AS ubicacion
     FROM laboratorios l
     JOIN equipos_fijos e ON e.laboratorio_id = l.id
     ORDER BY l.nombre, e.nombre
   `);
   return rows;
 }
+
+
+
+
