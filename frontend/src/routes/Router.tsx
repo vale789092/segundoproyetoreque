@@ -1,0 +1,111 @@
+// @ts-ignore
+import { lazy } from 'react';
+import { Navigate, createBrowserRouter } from "react-router";
+import Loadable from 'src/layouts/full/shared/loadable/Loadable';
+
+const FullLayout  = Loadable(lazy(() => import('../layouts/full/FullLayout')));
+const BlankLayout = Loadable(lazy(() => import('../layouts/blank/BlankLayout')));
+const Protected   = Loadable(lazy(() => import('./Protected')));
+
+// Home
+const Dashboard = Loadable(lazy(() => import('../views/Home')));
+
+// Operación
+const Reservas      = Loadable(lazy(() => import('../views/operacion/Reservas')));
+const Prestamos     = Loadable(lazy(() => import('../views/operacion/Prestamos')));
+const Devoluciones  = Loadable(lazy(() => import('../views/operacion/Devoluciones')));
+const Inventario    = Loadable(lazy(() => import('../views/operacion/Inventario')));
+
+// Reportes: una vista que acepta prop "mode"
+const Reportes   = Loadable(lazy(() => import('../views/operacion/Reportes')));
+const Bitacora   = Loadable(lazy(() => import('../views/operacion/Bitacora')));
+
+// Utilities
+const Typography   = Loadable(lazy(() => import("../../templateArchive/typography/Typography")));
+const Table        = Loadable(lazy(() => import("../../templateArchive/tables/Table")));
+const Alert        = Loadable(lazy(() => import("../../templateArchive/alerts/Alerts")));
+const Perfil       = Loadable(lazy(() => import("../views/perfil/Perfil")));
+
+// Icons
+const Solar        = Loadable(lazy(() => import("../../templateArchive/icons/Solar")));
+
+// Auth
+const Login        = Loadable(lazy(() => import('../views/auth/login/Login')));
+const Register     = Loadable(lazy(() => import('../views/auth/register/Register')));
+const SamplePage   = Loadable(lazy(() => import('../../templateArchive/sample-page/SamplePage')));
+const ErrorPage    = Loadable(lazy(() => import('../views/auth/error/Error')));
+
+// Labs
+const LabDetail    = Loadable(lazy(() => import('../views/labs/LabDetail')));
+const MisSolicitudes = Loadable(lazy(() => import('../views/operacion/MisSolicitudes')));
+
+// Historial
+const MyHistory    = Loadable(lazy(() => import('../historial/MyHistory')));
+
+// Aprobación/Solicitudes (técnico/admin)
+const SolicitudesAdmin = Loadable(lazy(() => import('../views/operacion/SolicitudesAdmin')));
+
+const Router = [
+  {
+    path: '/',
+    element: (
+      <Protected>
+        <FullLayout />
+      </Protected>
+    ),
+    children: [
+      { path: '/', exact: true, element: <Dashboard /> },
+
+      // Operación
+      { path: '/app/reservas',        element: <Reservas /> },
+      { path: '/app/mis-solicitudes', element: <MisSolicitudes /> },
+      { path: '/app/operacion/solicitudes-admin', element: <SolicitudesAdmin /> },
+      { path: '/app/prestamos',       element: <Prestamos /> },
+      { path: '/app/devoluciones',    element: <Devoluciones /> },
+      { path: '/app/inventario',      element: <Inventario /> },
+
+      // Reportes: misma página con modos
+      { path: '/app/reportes',            element: <Reportes /> },
+      { path: '/app/reportes/uso-global', element: <Reportes /> },
+      { path: '/app/reportes/inventario', element: <Reportes /> },                  
+      { path: '/app/reportes/uso-global',          element: <Reportes mode="global" /> },
+      { path: '/app/reportes/inventario',          element: <Reportes mode="inventario" /> },
+
+      { path: '/app/bitacora',        element: <Bitacora /> },
+
+      // Historial
+      { path: '/app/historial',       element: <MyHistory /> },
+
+      // Perfil
+      { path: '/app/perfil',          element: <Perfil /> },
+
+      // Utilities
+      { path: '/ui/typography', exact: true, element: <Typography/> },
+      { path: '/ui/table',      exact: true, element: <Table/> },
+      { path: '/ui/alert',      exact: true, element: <Alert/> },
+      { path: '/icons/solar',   exact: true, element: <Solar /> },
+      { path: '/sample-page',   exact: true, element: <SamplePage /> },
+
+      // Labs
+      { path: '/app/labs/:labId', element: <LabDetail /> },
+
+      { path: '*', element: <Navigate to="/auth/404" /> },
+    ],
+  },
+
+  // Auth público
+  {
+    path: '/',
+    element: <BlankLayout />,
+    children: [
+      { path: '/auth/login',    element: <Login /> },
+      { path: '/auth/register', element: <Register /> },
+      { path: '/auth/404',      element: <ErrorPage /> },
+      { path: '404',            element: <ErrorPage /> },
+      { path: '*',              element: <Navigate to="/auth/404" /> },
+    ],
+  },
+];
+
+const router = createBrowserRouter(Router);
+export default router;

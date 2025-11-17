@@ -6,9 +6,24 @@ import { pool } from "../../db/index.js";
  * soporta filtros por rango y tipo.
  */
 export async function getMyUsage({ userId, from, to, tipo = "all" }) {
-  // Rango por defecto: últimos 90 días
-  const qFrom = from ?? new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-  const qTo   = to   ?? new Date().toISOString();
+  
+  const normalize = (v) => {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === "string" && v.trim() === "") return undefined;
+    return v;
+  };
+
+  // Antes: últimos 90 días
+  // const qFrom =
+  //   normalize(from) ??
+  //   new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+  // const qTo =
+  //   normalize(to) ??
+  //   new Date().toISOString();
+
+  // Ahora: todo el historial por defecto
+  const qFrom = normalize(from) ?? "2000-01-01T00:00:00.000Z";
+  const qTo   = normalize(to)   ?? new Date().toISOString();
 
   // Descomponemos filtro de tipo en flags
   const wantSolic = (tipo === "all" || tipo === "solicitudes");
@@ -93,3 +108,99 @@ export async function getMyUsage({ userId, from, to, tipo = "all" }) {
     recurso     : { id: r.recurso_id, nombre: r.recurso },
   }));
 }
+
+export async function listMyHistory({ usuario_id, desde, hasta, tipo }) {
+  const params = [usuario_id];
+  const ranges = [];
+  if (desde) { params.push(desde); ranges.push(`h.creado_en >= $${params.length}`); }
+  if (hasta) { params.push(hasta); ranges.push(`h.creado_en <  $${params.length}`); }
+
+  // tipo opcional: 'reserva','prestamo','devolucion','capacitacion','otro'
+  const tipoFilter = tipo ? `AND (h.detalle->>'tipo') = $${params.push(tipo)}` : "";
+
+  const where = [`h.usuario_id = $1`, ...ranges];
+
+  const { rows } = await pool.query(
+    `SELECT
+       h.id, h.laboratorio_id, h.usuario_id, h.accion, h.detalle, h.creado_en,
+       l.nombre AS lab_nombre
+     FROM historial_laboratorio h
+     JOIN laboratorios l ON l.id = h.laboratorio_id
+    WHERE ${where.join(" AND ")} ${tipoFilter}
+    ORDER BY h.creado_en DESC, h.id DESC`,
+    params
+  );
+  return rows;
+}
+
+// ========= Reportes institucionales (todos los labs) =========
+
+// Por periodo académico (I: ene-jun, II: jul-dic)
+const periodoExpr = `
+  CASE
+    WHEN EXTRACT(MONTH FROM ts) BETWEEN 1 AND 6 THEN CONCAT(EXTRACT(YEAR FROM ts)::text, ' - I')
+    ELSE CONCAT(EXTRACT(YEAR FROM ts)::text, ' - II')
+  END
+`;
+
+// Uso global por periodo académico (reservas / préstamos / mantenimientos)
+export async function getGlobalUsage({ from, to }) {
+  const normalize = (v) => {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === "string" && v.trim() === "") return undefined;
+    return v;
+  };
+
+  const f = normalize(from) ?? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString();
+  const t = normalize(to)   ?? new Date().toISOString();
+
+  const unions = `
+    SELECT s.creada_en        AS ts, 'reserva'       AS tipo FROM solicitudes s
+      WHERE s.creada_en BETWEEN $1 AND $2
+    UNION ALL
+    SELECT s.fecha_uso_inicio AS ts, 'prestamo'      AS tipo FROM solicitudes s
+      WHERE s.fecha_uso_inicio BETWEEN $1 AND $2
+    UNION ALL
+    SELECT m.creado_en        AS ts, 'mantenimiento' AS tipo FROM mantenimientos m
+      WHERE m.creado_en BETWEEN $1 AND $2
+  `;
+
+  const sql = `
+    WITH eventos AS (${unions})
+    SELECT ${periodoExpr} AS periodo,
+           SUM(CASE WHEN tipo='reserva' THEN 1 ELSE 0 END)       AS reservas,
+           SUM(CASE WHEN tipo='prestamo' THEN 1 ELSE 0 END)      AS prestamos,
+           SUM(CASE WHEN tipo='mantenimiento' THEN 1 ELSE 0 END) AS mantenimientos
+    FROM eventos
+    GROUP BY periodo
+    ORDER BY MIN(ts) ASC
+  `;
+
+  const { rows } = await pool.query(sql, [f, t]);
+  return rows;
+}
+
+
+// Snapshot de inventario institucional (todos los recursos visibles)
+// backend/src/modules/modulo3_4/modulo3_4.model.js
+export async function getInventorySnapshot() {
+  const { rows } = await pool.query(`
+    SELECT
+      l.id        AS lab_id,
+      l.nombre    AS lab_nombre,
+      e.id        AS recurso_id,
+      e.nombre    AS recurso_nombre,
+      -- combinamos disponibilidad + estado operativo (ej: "disponible / operativo")
+      (e.estado_disp || ' / ' || e.estado_operativo) AS estado,
+      -- ubicación física del laboratorio
+      l.ubicacion AS ubicacion
+    FROM laboratorios l
+    JOIN equipos_fijos e ON e.laboratorio_id = l.id
+    ORDER BY l.nombre, e.nombre
+  `);
+  return rows;
+}
+
+
+
+

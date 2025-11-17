@@ -37,6 +37,31 @@ export async function listHorarios(req, res) {
   try {
     const labId = String(req.params.labId || "");
     if (!isUuid(labId)) return send(res, 400, "labId inválido");
+
+    const fechaStr = req.query?.fecha ? String(req.query.fecha) : null;
+
+    // Si viene fecha => filtrar por DOW y devolver slots del día
+    if (fechaStr) {
+      const d = new Date(fechaStr);
+      if (Number.isNaN(d.getTime())) return send(res, 400, "fecha inválida (YYYY-MM-DD)");
+      const dow = d.getDay(); // 0..6
+      const rows = await M.listHorariosByDow(labId, dow);
+
+      // Hook para bloqueos por fecha exacta (si en el futuro agregás tabla de bloqueos):
+      // const bloqueos = await M.listBloqueosPorFecha(labId, fechaStr); // -> [{desde,hasta,motivo}]
+      // En este MVP no hay bloqueos; devolvemos sólo base semanal.
+
+      const slots = rows.map(r => ({
+        fecha: fechaStr,
+        desde: r.hora_inicio,
+        hasta: r.hora_fin,
+        bloqueado: false,
+        motivo: null,
+      }));
+      return res.status(200).json(slots);
+    }
+
+    // Sin fecha => devolver definición semanal completa (como ahora)
     const rows = await M.listHorarios(labId);
     return res.status(200).json(rows);
   } catch (e) { return sendError(res, e); }

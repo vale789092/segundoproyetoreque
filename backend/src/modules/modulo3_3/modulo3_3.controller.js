@@ -1,7 +1,7 @@
 // backend/src/modules/modulo3_3/modulo3_3.controller.js
 import {
   createRequest, listMyRequests, getRequestById,
-  updateRequestOwned, deletePendingOwned, setStatus,
+  updateRequestOwned, deletePendingOwned, setStatus, listRequestsAll,
 } from "./modulo3_3.model.js";
 
 function send(res, code, message) {
@@ -90,3 +90,18 @@ export async function setStatusCtrl(req, res, next) {
     return res.json(updated);
   } catch (e) { return mapError(res, e, next); }
 }
+
+export async function listRequestsAllCtrl(req, res, next) {
+  try {
+    const { estado, lab_id, q } = req.query || {};
+    const limit  = Number.isFinite(+req.query?.limit)  ? Math.max(1, +req.query.limit)  : 50;
+    const offset = Number.isFinite(+req.query?.offset) ? Math.max(0, +req.query.offset) : 0;
+
+    const rows = await listRequestsAll({ estado, lab_id, q, limit, offset }); // ← llamar al MODEL
+    return res.json(rows);
+  } catch (e) {
+    return mapError(res, e, next);
+  }
+}
+
+

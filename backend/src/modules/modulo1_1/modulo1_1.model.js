@@ -694,3 +694,53 @@ export async function deleteEquipo(labId, equipoId, actorId = null) {
   }
   return !!rowCount;
 }
+
+// Lista de labs donde el técnico está asignado (activo)
+export async function listLabsByTechnician(userId) {
+  const { rows } = await pool.query(
+    `SELECT l.${COL.labs.id} AS id,
+            l.${COL.labs.nombre} AS nombre,
+            l.${COL.labs.codigo} AS codigo_interno,
+            l.${COL.labs.ubicacion} AS ubicacion,
+            l.${COL.labs.descripcion} AS descripcion
+       FROM ${TB.labs} l
+       JOIN ${TB.techLabs} tl
+         ON tl.${COL.techLabs.labId} = l.${COL.labs.id}
+      WHERE tl.${COL.techLabs.userId} = $1
+        AND COALESCE(tl.${COL.techLabs.activo}, true) = true
+      ORDER BY l.${COL.labs.nombre} ASC`,
+    [userId]
+  );
+  return rows;
+}
+
+// ¿Este usuario técnico está asignado al lab?
+export async function isTechnicianOfLab(userId, labId) {
+  const { rowCount } = await pool.query(
+    `SELECT 1
+       FROM ${TB.techLabs}
+      WHERE ${COL.techLabs.userId} = $1
+        AND ${COL.techLabs.labId} = $2
+        AND COALESCE(${COL.techLabs.activo}, true) = true
+      LIMIT 1`,
+    [userId, labId]
+  );
+  return rowCount > 0;
+}
+
+
+// AL FINAL DEL ARCHIVO (o cerca de users helpers)
+export async function listEligibleTechnicians() {
+  const { rows } = await pool.query(
+    `SELECT ${COL.users.id}      AS id,
+            ${COL.users.nombre}  AS nombre,
+            ${COL.users.correo}  AS correo,
+            ${COL.users.rol}     AS rol,
+            ${COL.users.activo}  AS activo
+       FROM ${TB.users}
+      WHERE ( ${COL.users.rol} = 'admin'
+           OR ( ${COL.users.rol} = 'tecnico' AND ${COL.users.activo} = true ) )
+      ORDER BY ${COL.users.nombre} ASC, ${COL.users.correo} ASC`
+  );
+  return rows;
+}

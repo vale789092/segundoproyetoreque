@@ -2,6 +2,7 @@
 import { getMyUsage } from "./modulo3_4.model.js";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
+import { listMyHistory } from "./modulo3_4.model.js";
 
 /** ================= Helpers ================= */
 const slug = (s = "") =>
@@ -344,6 +345,153 @@ export async function myUsagePdfCtrl(req, res, next) {
     }
 
     drawFooter();
+    doc.end();
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function listMyHistoryCtrl(req, res, next) {
+  try {
+    const usuario_id = req.user.id;
+    const { desde, hasta, tipo } = req.query || {};
+    const rows = await listMyHistory({ usuario_id, desde, hasta, tipo });
+    return res.json(rows);
+  } catch (e) { next(e); }
+}
+
+import { getGlobalUsage, getInventorySnapshot } from "./modulo3_4.model.js";
+
+// ======== INSTITUCIONALES: JSON ========
+export async function globalUsageCtrl(req, res, next) {
+  try {
+    const { from, to } = req.query || {};
+    const rows = await getGlobalUsage({ from, to });
+    res.json(rows);
+  } catch (e) { next(e); }
+}
+
+export async function inventoryCtrl(_req, res, next) {
+  try {
+    const rows = await getInventorySnapshot();
+    res.json(rows);
+  } catch (e) { next(e); }
+}
+
+// ======== INSTITUCIONALES: XLSX ========
+export async function globalUsageXlsxCtrl(req, res, next) {
+  try {
+    const { from, to } = req.query || {};
+    const rows = await getGlobalUsage({ from, to });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Uso Global");
+    ws.columns = [
+      { header: "Periodo",         key: "periodo",        width: 20 },
+      { header: "Reservas",        key: "reservas",       width: 14 },
+      { header: "Préstamos",       key: "prestamos",      width: 14 },
+      { header: "Mantenimientos",  key: "mantenimientos", width: 18 },
+    ];
+    rows.forEach(r => ws.addRow(r));
+    ws.getRow(1).font = { bold: true };
+
+    res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="UsoGlobal_${fmtDateYMD(from)}-a-${fmtDateYMD(to)}.xlsx"`);
+    const buf = await wb.xlsx.writeBuffer();
+    res.status(200).end(buf);
+  } catch (e) { next(e); }
+}
+
+export async function inventoryXlsxCtrl(_req, res, next) {
+  try {
+    const rows = await getInventorySnapshot();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Inventario");
+    ws.columns = [
+      { header: "Lab ID",        key: "lab_id",         width: 10 },
+      { header: "Laboratorio",   key: "lab_nombre",     width: 28 },
+      { header: "Recurso ID",    key: "recurso_id",     width: 12 },
+      { header: "Recurso",       key: "recurso_nombre", width: 34 },
+      { header: "Estado",        key: "estado",         width: 16 },
+      { header: "Ubicación",     key: "ubicacion",      width: 20 },
+    ];
+    rows.forEach(r => ws.addRow(r));
+    ws.getRow(1).font = { bold: true };
+
+    res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="InventarioInstitucional.xlsx"`);
+    const buf = await wb.xlsx.writeBuffer();
+    res.status(200).end(buf);
+  } catch (e) { next(e); }
+}
+
+// ======== (opcional) PDF global rápido ========
+export async function globalUsagePdfCtrl(req, res, next) {
+  try {
+    const { from, to } = req.query || {};
+    const rows = await getGlobalUsage({ from, to });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="UsoGlobal_${fmtDateYMD(from)}-a-${fmtDateYMD(to)}.pdf"`);
+
+    const doc = new PDFDocument({ size:"A4", layout:"landscape", margins:{top:32,right:32,bottom:36,left:32} });
+    doc.pipe(res);
+    doc.font("Helvetica-Bold").fontSize(14).text("Reporte de Uso Global (todos los laboratorios)");
+    doc.moveDown(0.3).font("Helvetica").fontSize(10)
+       .text(`Rango: ${fmtDateYMD(from)} a ${fmtDateYMD(to)}`);
+
+    const X = 40, widths = [220,120,120,150]; let y = doc.y + 12;
+    const headers = ["Periodo","Reservas","Préstamos","Mantenimientos"];
+    doc.font("Helvetica-Bold");
+    headers.forEach((h,i)=> doc.text(h, X + widths.slice(0,i).reduce((a,b)=>a+b,0), y, { width: widths[i] }));
+    y += 16; doc.font("Helvetica");
+    rows.forEach(r => {
+      const vals = [r.periodo, String(r.reservas), String(r.prestamos), String(r.mantenimientos)];
+      vals.forEach((v,i)=> doc.text(v, X + widths.slice(0,i).reduce((a,b)=>a+b,0), y, { width: widths[i] }));
+      y += 16; if (y > doc.page.height - 60) { doc.addPage(); y = 60; }
+    });
+    doc.end();
+  } catch (e) { next(e); }
+}
+
+export async function inventoryPdfCtrl(_req, res, next) {
+  try {
+    const rows = await getInventorySnapshot();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'inline; filename="InventarioInstitucional.pdf"'
+    );
+
+    const doc = new PDFDocument({
+      size: "A4",
+      layout: "portrait",
+      margins: { top: 40, right: 40, bottom: 40, left: 40 },
+    });
+
+    doc.pipe(res);
+
+    doc.font("Helvetica-Bold").fontSize(14).text("Inventario institucional – LabTEC");
+    doc.moveDown(0.5);
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .text(`Total de recursos: ${rows.length}`);
+    doc.moveDown(0.5);
+
+    rows.forEach((r, idx) => {
+      const linea =
+        `${idx + 1}. ` +
+        `${r.lab_nombre ?? ""} (${r.lab_id ?? ""})  |  ` +
+        `${r.recurso_nombre ?? ""} (${r.recurso_id ?? ""})  |  ` +
+        `Estado: ${r.estado ?? ""}  |  ` +
+        `Ubicación: ${r.ubicacion ?? ""}`;
+      doc.text(linea);
+      doc.moveDown(0.2);
+    });
+
     doc.end();
   } catch (e) {
     next(e);

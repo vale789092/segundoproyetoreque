@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],   // ← nuevo alias
+      "src/*": ["src/*"]  // ← el que ya usabas
+    },
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* (opcional) asegura tipos de Vite/SVG como componentes */
+    "types": ["vite/client"]
+  },
+  "include": ["src", "templateArchive/typography", "templateArchive/tables", "templateArchive/forms", "templateArchive/alerts", "templateArchive/icons", "templateArchive/chats", "templateArchive/sample-page", "templateArchive/shadows", "src/components/shared", "templateArchive/theme"]
+}
