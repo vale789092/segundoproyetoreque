@@ -1,7 +1,9 @@
 import bcrypt from "bcryptjs";
-import { createUser, getUserByEmail } from "./auth.model.js";
 import jwt from "jsonwebtoken";
-import { updateUserById } from "./auth.model.js";
+
+import { createUser, getUserByEmail, updateUserById } from "./auth.model.js";
+import { pool } from "../../db/index.js";
+
 
 const rolesPermitidos = ["estudiante", "profesor", "tecnico", "admin"];
 function esRolValido(rol) {
