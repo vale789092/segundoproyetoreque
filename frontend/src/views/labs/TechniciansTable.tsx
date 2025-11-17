@@ -273,7 +273,7 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
                   <Button color="light" type="button" onClick={() => setShowCreate(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={createBusy}>
+                  <Button color="light" type="submit" disabled={createBusy}>
                     {createBusy ? "Guardando…" : "Guardar"}
                   </Button>
                 </div>
@@ -313,7 +313,7 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
                 <Button color="light" type="button" onClick={() => setEditRow(null)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={editBusy}>
+                <Button color="light" type="submit" disabled={editBusy}>
                   {editBusy ? "Guardando…" : "Guardar"}
                 </Button>
               </div>

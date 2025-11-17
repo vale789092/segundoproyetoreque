@@ -237,7 +237,7 @@ export default function PoliciesTab({ labId }: Props) {
               </div>
               <div className="flex justify-end gap-2">
                 <Button color="light" type="button" onClick={()=>setShowCreate(false)}>Cancelar</Button>
-                <Button type="submit" disabled={createBusy}>
+                <Button color="light" type="submit" disabled={createBusy}>
                   {createBusy ? "Guardando…" : "Guardar"}
                 </Button>
               </div>
@@ -301,7 +301,7 @@ export default function PoliciesTab({ labId }: Props) {
               </div>
               <div className="flex justify-end gap-2">
                 <Button color="light" type="button" onClick={()=>setEditItem(null)}>Cancelar</Button>
-                <Button type="submit" disabled={editBusy}>{editBusy ? "Guardando…" : "Guardar"}</Button>
+                <Button color="light" type="submit" disabled={editBusy}>{editBusy ? "Guardando…" : "Guardar"}</Button>
               </div>
             </form>
           </div>
