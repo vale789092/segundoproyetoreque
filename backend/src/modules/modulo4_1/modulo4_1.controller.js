@@ -1,3 +1,4 @@
+// modulo4_1.controller.js
 import * as M from "./modulo4_1.model.js";
 
 const bad = (res, msg) => res.status(400).json({ error: msg });
@@ -13,13 +14,21 @@ function mapPg(e, res, next) {
     "23503": [400, "Referencia inválida"],
     "23514": [400, "Violación de regla de datos"],
     "22P02": [400, "Dato inválido"],
-    "USR_INVALID_ROLE": [400, "rol inválido (estudiante|profesor|tecnico|admin)"],
-    "USR_NOT_FOUND": [404, "Usuario no encontrado"],
-    "USR_LAST_ADMIN": [409, "No se puede remover al último admin activo"],
+    USR_INVALID_ROLE: [
+      400,
+      "rol inválido (estudiante|profesor|tecnico|admin)",
+    ],
+    USR_NOT_FOUND: [404, "Usuario no encontrado"],
+    USR_LAST_ADMIN: [409, "No se puede remover al último admin activo"],
   };
   const r = m[e.code];
   return r
-    ? res.status(r[0]).json({ error: r[1], detail: e.detail || e.constraint || e.message })
+    ? res
+        .status(r[0])
+        .json({
+          error: r[1],
+          detail: e.detail || e.constraint || e.message,
+        })
     : next(e);
 }
 
@@ -54,6 +63,24 @@ export async function postDeactivateUser(req, res, next) {
     const out = await M.deactivateUser(userId);
     // Devuelve estado final para facilidad de consumo en el front
     return res.status(200).json(out); // { id, activo:false, updated_at }
+  } catch (e) {
+    return mapPg(e, res, next);
+  }
+}
+
+/**
+ * 4.1.x — Alta de usuarios (reactivación)
+ * POST /api/admin/users/:userId/activate
+ * Body: vacío (opcional) — solo acción
+ */
+export async function postActivateUser(req, res, next) {
+  try {
+    const userId = String(req.params.userId || "");
+    if (!isUuid(userId)) return bad(res, "userId inválido");
+
+    const out = await M.activateUser(userId);
+    // Devuelve estado final para facilidad de consumo en el front
+    return res.status(200).json(out); // { id, activo:true, updated_at }
   } catch (e) {
     return mapPg(e, res, next);
   }

@@ -13,10 +13,10 @@ export type UserMini = {
   activo?: boolean;
 };
 
-// Buscar usuarios por nombre/correo/código (usa /api/users/search)
+// Buscar usuarios por nombre/correo/código (usa /api/admin/users/search para admin)
 export async function searchUsers(q: string): Promise<UserMini[]> {
   try {
-    const { data } = await api.get("/users/search", {
+    const { data } = await api.get("/admin/users/search", {
       params: { q },
     });
     return (data?.users ?? []) as UserMini[];
@@ -24,6 +24,7 @@ export async function searchUsers(q: string): Promise<UserMini[]> {
     throw new Error(parseError(err));
   }
 }
+
 
 /**
  * Mantiene la firma `listUsers()` que usabas en el front.
@@ -35,9 +36,8 @@ export async function listUsers(q: string = ""): Promise<UserMini[]> {
 }
 
 /**
- * Cambiar solo el rol (usa /api/admin/users/:userId/role)
- * → Esta función la dejamos por compatibilidad, aunque el Perfil
- *   ya no la usa directamente.
+ * 4.1.2 — Asignación de roles
+ * Usa módulo 4_1 → POST /api/admin/users/:userId/role
  */
 export async function adminUpdateUserRole(
   userId: string,
@@ -51,10 +51,13 @@ export async function adminUpdateUserRole(
 }
 
 /**
- * Función que usa el Perfil:
- * - Llama a PATCH /api/admin/users/:userId con todos los campos editables.
- * - El backend actualiza nombre, correo, rol, código, carrera, teléfono, activo.
- * - Devuelve el usuario actualizado desde la BD.
+ * Edición completa de usuario desde el Perfil (admin):
+ * - Si viene `rol`, primero lo actualiza usando módulo 4_1 (postAssignRole).
+ * - Luego hace PATCH /api/admin/users/:userId para nombre/correo/código/carrera/teléfono/activo.
+ *
+ * Así nos aseguramos de:
+ *   - Usar la lógica de 4.1.2 para roles (protección último admin, etc.).
+ *   - Seguir usando updateUserById para el resto de campos.
  */
 export async function adminUpdateUser(
   userId: string,
@@ -69,19 +72,45 @@ export async function adminUpdateUser(
   }
 ): Promise<UserMini> {
   try {
-    const { data } = await api.patch(`/admin/users/${userId}`, payload);
-    // backend responde { user, message }
+    // 1) Si hay cambio de rol, usar módulo 4_1
+    if (payload.rol) {
+      await adminUpdateUserRole(userId, payload.rol);
+    }
+
+    // 2) PATCH para el resto de campos (sin tocar rol aquí)
+    const { rol, ...rest } = payload;
+    const { data } = await api.patch(`/admin/users/${userId}`, rest);
+
+    // backend responde { user, message } o similar
     return (data?.user ?? data) as UserMini;
   } catch (err) {
     throw new Error(parseError(err));
   }
 }
 
-/** Extra (si quieres usarlo): desactivar usuario */
+/**
+ * 4.1.4 — Baja de usuarios (desactivación)
+ * Usa módulo 4_1 → POST /api/admin/users/:userId/deactivate
+ */
 export async function adminDeactivateUser(userId: string) {
   try {
     const { data } = await api.post(`/admin/users/${userId}/deactivate`);
-    return data; // { id, activo: false, updated_at }
+    // módulo 4_1 responde { id, activo:false, updated_at }
+    return data as UserMini;
+  } catch (err) {
+    throw new Error(parseError(err));
+  }
+}
+
+/**
+ * Alta de usuarios (reactivación)
+ * Usa módulo 4_1 → POST /api/admin/users/:userId/activate
+ */
+export async function adminActivateUser(userId: string) {
+  try {
+    const { data } = await api.post(`/admin/users/${userId}/activate`);
+    // módulo 4_1 responde { id, activo:true, updated_at }
+    return data as UserMini;
   } catch (err) {
     throw new Error(parseError(err));
   }

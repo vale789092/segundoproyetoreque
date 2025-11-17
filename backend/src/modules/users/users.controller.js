@@ -1,5 +1,6 @@
 import { searchUsersDB } from "./users.model.js";
 import { updateUserById } from "../auth/auth.model.js";
+import { deactivateUserById } from "./users.model.js";
 
 // Si no las exportas, puedes volver a definirlas aquí:
 const roles = ["estudiante", "profesor", "tecnico", "admin"];
@@ -29,13 +30,18 @@ export async function searchUsers(req, res, next) {
   try {
     const q = String(req.query.q || "").trim();
     const meId = req.user?.sub || req.user?.id;
-    if (!meId) {
-      const e = new Error("Unauthorized");
-      e.status = 401;
-      throw e;
-    }
 
-    const users = await searchUsersDB({ q, excludeId: meId, limit: 50 });
+    // si viene por /api/admin/users/... mostramos también inactivos
+    const base = req.baseUrl || "";
+    const isAdminPath = base.includes("/admin/users");
+
+    const users = await searchUsersDB({
+      q,
+      excludeId: meId,
+      limit: 50,
+      includeInactive: isAdminPath,   // aquí ya será true para /api/admin/users/...
+    });
+
     res.json({ users });
   } catch (err) {
     next(err);
@@ -57,6 +63,27 @@ export async function adminUpdateUser(req, res, next) {
 
     let { nombre, correo, rol, codigo, carrera, telefono, activo } =
       req.body || {};
+
+        // CASO ESPECIAL: solo cambiar "activo" (activar / desactivar)
+    const soloCambiaActivo =
+      nombre === undefined &&
+      correo === undefined &&
+      rol === undefined &&
+      codigo === undefined &&
+      carrera === undefined &&
+      telefono === undefined &&
+      typeof activo === "boolean";
+
+    if (soloCambiaActivo) {
+      const updated = await updateUserById(userId, { activo: !!activo });
+      const { password_hash, ...safe } = updated;
+
+      return res.json({
+        user: safe,
+        message: "Estado de la cuenta actualizado correctamente.",
+      });
+    }
+
 
     // Normalizar strings vacíos a null para NO forzar validaciones ni updates
     if (telefono === "") telefono = null;
@@ -138,3 +165,27 @@ export async function adminUpdateUser(req, res, next) {
   }
 }
 
+/**
+ * POST /api/admin/users/:userId/deactivate
+ * Desactiva la cuenta (activo = false) manteniendo el historial.
+ */
+export async function adminDeactivateUser(req, res, next) {
+  try {
+    const userId = req.params.userId;
+    if (!userId) {
+      const e = new Error("Falta userId");
+      e.status = 400;
+      throw e;
+    }
+
+    const updated = await deactivateUserById(userId);
+    const { password_hash, ...safe } = updated;
+
+    return res.json({
+      user: safe,
+      message: "Cuenta de usuario desactivada correctamente.",
+    });
+  } catch (err) {
+    next(err);
+  }
+}

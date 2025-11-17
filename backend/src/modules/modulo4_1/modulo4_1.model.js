@@ -1,3 +1,4 @@
+// modulo4_1.model.js
 import { pool } from "../../db/index.js";
 
 /* ---------- 4.1.2 ---------- */
@@ -55,7 +56,7 @@ export async function setUserRole(userId, newRole) {
   }
 }
 
-/* ---------- 4.1.4 ---------- */
+/* ---------- 4.1.4 — Baja (desactivar) ---------- */
 export async function deactivateUser(userId) {
   const client = await pool.connect();
   try {
@@ -106,4 +107,38 @@ export async function deactivateUser(userId) {
   }
 }
 
+/* ---------- 4.1.x — Reactivar (alta) ---------- */
+export async function activateUser(userId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
+    const u = await client.query(
+      "SELECT id, rol, activo FROM users WHERE id = $1",
+      [userId]
+    );
+    if (u.rowCount === 0) {
+      const e = new Error("Usuario no encontrado");
+      e.code = "USR_NOT_FOUND";
+      throw e;
+    }
+
+    // Reactivar (idempotente) y actualizar updated_at
+    const upd = await client.query(
+      `UPDATE users
+          SET activo = TRUE,
+              updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, activo, updated_at`,
+      [userId]
+    );
+
+    await client.query("COMMIT");
+    return upd.rows[0]; // { id, activo:true, updated_at:ts }
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

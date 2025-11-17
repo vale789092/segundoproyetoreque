@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { Button, Label, Select, TextInput, Table } from "flowbite-react";
 import { useNavigate } from "react-router";
-import { me, updateMe, listUsers, adminUpdateUser } from "@/services";
+import {
+  me,
+  updateMe,
+  listUsers,
+  adminUpdateUser,
+  adminActivateUser,
+  adminDeactivateUser,
+} from "@/services";
 import { getToken } from "@/services/storage";
 import {
   getUser as getStoredUser,
@@ -60,7 +67,8 @@ function correoConDominioDeRol(correoActual: string, rol: Rol): string {
 export default function Perfil() {
   const nav = useNavigate();
 
-  const [usersOk, setUsersOk] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);          // ✅ mensaje perfil
+  const [usersOk, setUsersOk] = useState<string | null>(null); // ✅ mensaje admin usuarios
   const [data, setData] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -103,6 +111,7 @@ export default function Perfil() {
       try {
         setLoading(true);
         setErr(null);
+        setOk(null);
 
         const stored = (getStoredUser() as User) || {};
         let apiUser: User = {};
@@ -139,6 +148,7 @@ export default function Perfil() {
       try {
         setUsersLoading(true);
         setUsersErr(null);
+        setUsersOk(null);
         // trae TODOS los usuarios (el backend excluye al propio admin)
         const all = (await listUsers()) as User[];
         setUsers(
@@ -159,12 +169,15 @@ export default function Perfil() {
   const on = (k: keyof typeof form) => (e: any): void => {
     const value = e.target.value;
     setForm((f) => ({ ...f, [k]: value }));
+    setOk(null);
+    setErr(null);
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
       setErr(null);
+      setOk(null);
 
       if (!form.nombre.trim()) {
         setErr("El nombre es obligatorio.");
@@ -215,6 +228,7 @@ export default function Perfil() {
       setData(updated);
       setStoredUser(updated);
       setEdit(false);
+      setOk("Perfil actualizado correctamente ✅");
     } catch (e: any) {
       setErr(e?.message ?? "No se pudo guardar.");
     } finally {
@@ -235,12 +249,16 @@ export default function Perfil() {
     }
     setEdit(false);
     setErr(null);
+    setOk(null);
   };
 
   // ====== ADMIN: helpers ======
   const handleChangeUserField =
     (id: string, field: keyof User) => (e: any) => {
       const value = e.target.value;
+      setUsersOk(null);
+      setUsersErr(null);
+
       setUsers((prev) =>
         prev.map((u) => {
           if (u.id !== id) return u;
@@ -266,6 +284,7 @@ export default function Perfil() {
     try {
       setSavingUserId(user.id);
       setUsersErr(null);
+      setUsersOk(null);
 
       const nombre = (user.nombre || "").trim();
       const correo = (user.correo || "").trim();
@@ -287,10 +306,7 @@ export default function Perfil() {
         );
         return;
       }
-      if (
-        telefono &&
-        (!/^[0-9]+$/.test(telefono) || telefono.length !== 8)
-      ) {
+      if (telefono && (!/^[0-9]+$/.test(telefono) || telefono.length !== 8)) {
         setUsersErr(
           `El teléfono de ${nombre} debe tener exactamente 8 dígitos (ej: 88881234).`
         );
@@ -319,15 +335,66 @@ export default function Perfil() {
         prev.map((u) => (u.id === user.id ? { ...u, ...updated } : u))
       );
 
-      setUsersOk(`Cambios guardados para ${updated.nombre || "el usuario"}.`);
+      setUsersOk(`Cambios guardados para ${updated.nombre || "el usuario"} ✅`);
       setUsersErr(null);
-
     } catch (e: any) {
       setUsersErr(e?.message ?? "No se pudo actualizar el usuario.");
     } finally {
       setSavingUserId(null);
     }
   };
+
+  const handleToggleActive = async (user: User) => {
+  if (!user.id) return;
+
+  const nombre = user.nombre || "el usuario";
+  const activar = user.activo === false;
+
+  const confirm = window.confirm(
+    activar
+      ? `¿Seguro que querés activar a ${nombre}?`
+      : `¿Seguro que querés desactivar a ${nombre}?\n\nSu cuenta quedará inactiva pero se mantiene el historial de actividades.`
+  );
+
+  if (!confirm) return;
+
+  try {
+    setSavingUserId(user.id);
+    setUsersErr(null);
+    setUsersOk(null);
+
+    let updated: User;
+
+    if (activar) {
+      // Alta: módulo 4_1 → POST /api/admin/users/:id/activate
+      const res = (await adminActivateUser(user.id)) as User;
+      updated = res;
+      setUsersOk(`Usuario ${nombre} activado correctamente`);
+    } else {
+      // Baja: módulo 4_1 → POST /api/admin/users/:id/deactivate
+      const res = (await adminDeactivateUser(user.id)) as User;
+      updated = res;
+      setUsersOk(`Usuario ${nombre} desactivado correctamente`);
+    }
+
+    // Solo sobreescribimos lo que venga (id, activo, updated_at),
+    // el resto de campos se mantienen.
+    setUsers((prev) =>
+      prev.map((u) => (u.id === user.id ? { ...u, ...updated } : u))
+    );
+  } catch (e: any) {
+    setUsersErr(
+      e?.message ??
+        (activar
+          ? "No se pudo activar el usuario."
+          : "No se pudo desactivar el usuario.")
+    );
+  } finally {
+    setSavingUserId(null);
+  }
+};
+
+
 
   const filteredUsers = users.filter((u) => {
     const q = userSearch.trim().toLowerCase();
@@ -354,10 +421,15 @@ export default function Perfil() {
 
   return (
     <div className="rounded-xl shadow-md bg-white dark:bg-darkgray p-6">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-2">
         <h5 className="card-title !mb-0">Perfil</h5>
         <RolePill role={edit ? form.rol : (data.rol as Rol)} />
       </div>
+      {ok && (
+        <p className="text-sm text-green-600 mb-4">
+          {ok}
+        </p>
+      )}
 
       <div className="grid grid-cols-12 gap-30">
         {/* Columna izquierda */}
@@ -435,7 +507,11 @@ export default function Perfil() {
             <>
               <Button
                 className="bg-primary text-white"
-                onClick={() => setEdit(true)}
+                onClick={() => {
+                  setEdit(true);
+                  setOk(null);
+                  setErr(null);
+                }}
               >
                 Editar
               </Button>
@@ -468,9 +544,9 @@ export default function Perfil() {
         <div className="mt-10 border-t pt-6">
           <h6 className="font-semibold mb-2">Administrar usuarios</h6>
           <p className="text-sm text-gray-500 mb-4">
-            Como administrador podés actualizar el rol y el correo institucional
-            de otros usuarios. El dominio del correo se ajusta automáticamente
-            según el rol seleccionado.
+            Como administrador podés actualizar el rol, correo institucional y
+            desactivar cuentas de otros usuarios. El dominio del correo se
+            ajusta automáticamente según el rol seleccionado.
           </p>
 
           <div className="flex flex-wrap items-end gap-3 mb-4">
@@ -487,16 +563,11 @@ export default function Perfil() {
               />
             </div>
             {usersOk && (
-              <p className="text-green-600 text-sm mb-4">
-                {usersOk}
-              </p>
+              <p className="text-green-600 text-sm">{usersOk}</p>
             )}
 
-            {usersErr && (
-              <p className="text-red-500 text-sm">{usersErr}</p>
-            )}
+            {usersErr && <p className="text-red-500 text-sm">{usersErr}</p>}
           </div>
-
 
           {usersLoading ? (
             <p>Cargando usuarios…</p>
@@ -510,6 +581,7 @@ export default function Perfil() {
                   <Table.HeadCell>Código</Table.HeadCell>
                   <Table.HeadCell>Carrera / Unidad</Table.HeadCell>
                   <Table.HeadCell>Teléfono</Table.HeadCell>
+                  <Table.HeadCell>Estado</Table.HeadCell>
                   <Table.HeadCell>Acciones</Table.HeadCell>
                 </Table.Head>
                 <Table.Body className="divide-y">
@@ -582,7 +654,18 @@ export default function Perfil() {
                           placeholder="88881234"
                         />
                       </Table.Cell>
-                      <Table.Cell className="min-w-[120px]">
+                      <Table.Cell className="min-w-[100px] text-sm">
+                        {u.activo === false ? (
+                          <span className="px-2 py-1 rounded-full bg-red-100 text-red-700">
+                            Inactivo
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full bg-green-100 text-green-700">
+                            Activo
+                          </span>
+                        )}
+                      </Table.Cell>
+                      <Table.Cell className="min-w-[200px] flex flex-wrap gap-2">
                         <Button
                           size="xs"
                           className={actionBtnClass}
@@ -592,12 +675,22 @@ export default function Perfil() {
                         >
                           Guardar
                         </Button>
+                        <Button
+                          size="xs"
+                          color={u.activo === false ? "success" : "failure"}
+                          onClick={() => handleToggleActive(u)}
+                          isProcessing={savingUserId === u.id}
+                          disabled={savingUserId === u.id}
+                        >
+                          {u.activo === false ? "Activar" : "Desactivar"}
+                        </Button>
                       </Table.Cell>
+
                     </Table.Row>
                   ))}
                   {filteredUsers.length === 0 && (
                     <Table.Row>
-                      <Table.Cell colSpan={7} className="text-center text-sm">
+                      <Table.Cell colSpan={8} className="text-center text-sm">
                         No hay usuarios que coincidan con el filtro.
                       </Table.Cell>
                     </Table.Row>

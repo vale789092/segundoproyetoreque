@@ -4,23 +4,62 @@ import { pool } from "../../db/index.js";
  * Busca usuarios por nombre/correo/código (case-insensitive).
  * Excluye al propio usuario (excludeId).
  */
-export async function searchUsersDB({ q, excludeId, limit = 20 }) {
-  const term = `%${String(q || "").trim()}%`;
+export async function searchUsersDB({
+  q = "",
+  excludeId = null,
+  limit = 50,
+  includeInactive = false,
+}) {
+  const values = [];
+  const where = [];
 
-  const params = [excludeId, term, term, term, limit];
+  if (excludeId) {
+    values.push(excludeId);
+    where.push(`id <> $${values.length}`);
+  }
+
+  // solo filtramos por activo cuando NO queremos ver inactivos
+  if (!includeInactive) {
+    where.push(`activo = TRUE`);
+  }
+
+  if (q) {
+    const like = `%${q.toLowerCase()}%`;
+    values.push(like);
+    const idx = values.length;
+    where.push(
+      `(LOWER(nombre) LIKE $${idx} OR LOWER(correo) LIKE $${idx} OR codigo LIKE $${idx})`
+    );
+  }
+
   const sql = `
-    SELECT id, nombre, correo, rol
+    SELECT id, nombre, correo, rol, codigo, carrera, telefono, activo, created_at
     FROM users
-    WHERE id <> $1
-      AND activo = TRUE
-      AND (
-        nombre ILIKE $2
-        OR correo ILIKE $3
-        OR codigo ILIKE $4
-      )
+    ${where.length ? "WHERE " + where.join(" AND ") : ""}
     ORDER BY nombre ASC
-    LIMIT $5
+    LIMIT ${limit}
   `;
-  const { rows } = await pool.query(sql, params);
+
+  const { rows } = await pool.query(sql, values);
   return rows;
+}
+
+export async function deactivateUserById(userId) {
+  const { rows } = await pool.query(
+    `
+    UPDATE users
+    SET activo = false
+    WHERE id = $1
+    RETURNING id, nombre, correo, rol, codigo, carrera, telefono, activo, created_at;
+    `,
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    const e = new Error("Usuario no encontrado");
+    e.status = 404;
+    throw e;
+  }
+
+  return rows[0];
 }
