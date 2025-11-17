@@ -91,10 +91,14 @@ export async function listLabTechnicians(labId: string): Promise<LabTechnician[]
   const { data } = await api.get(`/labs/${labId}/technicians`);
   return data as LabTechnician[];
 }
-export async function listEligibleTechnicians(): Promise<EligibleUser[]> {
-  const { data } = await api.get(`/users`, { params: { eligible: "techs" } });
+
+export async function listEligibleTechnicians(
+  labId: string
+): Promise<EligibleUser[]> {
+  const { data } = await api.get(`/labs/${labId}/eligible-technicians`);
   return data as EligibleUser[];
 }
+
 export async function addLabTechnician(labId: string, payload: CreateLabTechnicianDTO) {
   const { data } = await api.post(`/labs/${labId}/technicians`, payload);
   return data as { id: string };

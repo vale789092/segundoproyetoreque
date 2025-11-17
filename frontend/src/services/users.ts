@@ -115,14 +115,3 @@ export async function adminActivateUser(userId: string) {
     throw new Error(parseError(err));
   }
 }
-
-/**
- * Lista de usuarios elegibles para ser responsables de laboratorio.
- * Asume un endpoint tipo: GET /labs/:labId/eligible-technicians
- */
-export async function listEligibleTechnicians(
-  labId: string
-): Promise<UserMini[]> {
-  const { data } = await api.get(`/labs/${labId}/eligible-technicians`);
-  return data as UserMini[];
-}

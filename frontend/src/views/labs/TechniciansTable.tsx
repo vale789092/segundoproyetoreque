@@ -9,7 +9,8 @@ import {
   removeLabTechnician,
   type LabTechnician,
 } from "@/services/labs";
-import { listEligibleTechnicians, type UserMini } from "@/services/users";
+import { type UserMini } from "@/services/users";
+import { listEligibleTechnicians } from "@/services/labs";
 import { getUser } from "@/services/storage";
 
 type Props = { labId: string };
@@ -175,14 +176,42 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
               <tr>
                 <th className="px-4 py-3 text-left font-medium">Nombre</th>
                 <th className="px-4 py-3 text-left font-medium">Correo</th>
+                <th className="px-4 py-3 text-left font-medium">Asignado hasta</th>
+                <th className="px-4 py-3 text-left font-medium">Estado</th>
                 <th className="px-4 py-3 text-left font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {items.map((row) => (
-                <tr key={row.id} className="border-t hover:bg-slate-50/70 dark:hover:bg-white/5">
-                  <td className="px-4 py-3">{(row as any).usuario_nombre ?? "—"}</td>
-                  <td className="px-4 py-3">{(row as any).usuario_correo ?? "—"}</td>
+                <tr
+                  key={row.id}
+                  className="border-t hover:bg-slate-50/70 dark:hover:bg-white/5"
+                >
+                  <td className="px-4 py-3">
+                    {row.usuario_nombre ?? "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.usuario_correo ?? "—"}
+                  </td>
+
+                  {/* NUEVA COLUMNA: Asignado hasta */}
+                  <td className="px-4 py-3">
+                    {row.asignado_hasta ? toYmd(row.asignado_hasta) : "Indefinido"}
+                  </td>
+
+                  {/* NUEVA COLUMNA: Estado */}
+                  <td className="px-4 py-3">
+                    {row.activo ? (
+                      <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs">
+                        Activo
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs">
+                        Inactivo
+                      </span>
+                    )}
+                  </td>
+
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Button
@@ -201,9 +230,11 @@ export default function TechniciansTable({ labId }: Props): JSX.Element {
                         disabled={!isAdmin || removeBusy === row.id}
                         title="Eliminar"
                       >
-                        {removeBusy === row.id
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <Trash2 className="h-4 w-4 mr-1" />}
+                        {removeBusy === row.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-1" />
+                        )}
                         Eliminar
                       </Button>
                     </div>
