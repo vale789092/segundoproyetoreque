@@ -27,9 +27,7 @@ router.delete("/:id/resources/:equipoId", removeResourceCtrl);
 
 // Consultas
 router.get("/", listMaintenancesCtrl);
-router.get("/:id", getMaintenanceCtrl);
-
-// Historial (por equipo/lab/periodo)
 router.get("/historys", listMaintenanceHistoryCtrl);
+router.get("/:id", getMaintenanceCtrl);
 
 export default router;

@@ -29,6 +29,7 @@ const SidebarContent: SidebarSection[] = [
       { id: "prestamos",     title: "Préstamos",    to: "/app/prestamos",    roles: ["profesor","tecnico","admin"] },
       { id: "devoluciones",  title: "Devoluciones", to: "/app/devoluciones", roles: ["profesor","tecnico","admin"] },
       { id: "bitacora", title: "Bitácora", to: "/app/bitacora", roles: ["profesor","tecnico","admin"] },
+      { id: "mantenimientos", title: "Mantenimientos", to: "/app/mantenimientos", roles: ["tecnico","admin"]},
     ],
   },
 
@@ -42,6 +43,7 @@ const SidebarContent: SidebarSection[] = [
       { id: "rep-inventario", title: "Inventario", to: "/app/reportes/inventario" },
       // (a futuro) { id: "rep-consumos", title: "Consumo de materiales", to: "/app/reportes/consumos" },
       // (a futuro) { id: "rep-desempeno", title: "Desempeño", to: "/app/reportes/desempeno" },
+      { id: "rep-mant",       title: "Mantenimiento", to: "/app/reportes/mantenimiento" }
     ],
   },
 ];

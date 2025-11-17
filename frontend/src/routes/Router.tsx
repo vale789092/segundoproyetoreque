@@ -3,6 +3,7 @@ import { lazy } from 'react';
 import { Navigate, createBrowserRouter } from "react-router";
 import Loadable from 'src/layouts/full/shared/loadable/Loadable';
 
+
 const FullLayout  = Loadable(lazy(() => import('../layouts/full/FullLayout')));
 const BlankLayout = Loadable(lazy(() => import('../layouts/blank/BlankLayout')));
 const Protected   = Loadable(lazy(() => import('./Protected')));
@@ -15,9 +16,15 @@ const Reservas      = Loadable(lazy(() => import('../views/operacion/Reservas'))
 const Prestamos     = Loadable(lazy(() => import('../views/operacion/Prestamos')));
 const Devoluciones  = Loadable(lazy(() => import('../views/operacion/Devoluciones')));
 const Inventario    = Loadable(lazy(() => import('../views/operacion/Inventario')));
+const Mantenimientos = Loadable(lazy(() => import('../views/operacion/Mantenimientos')));
 
 // Reportes: una vista que acepta prop "mode"
 const Reportes   = Loadable(lazy(() => import('../views/operacion/Reportes')));
+
+const ReportesMantenimiento = Loadable(
+  lazy(() => import('../views/reportes/ReportesMantenimiento'))
+);
+
 const Bitacora   = Loadable(lazy(() => import('../views/operacion/Bitacora')));
 
 // Utilities
@@ -63,6 +70,7 @@ const Router = [
       { path: '/app/prestamos',       element: <Prestamos /> },
       { path: '/app/devoluciones',    element: <Devoluciones /> },
       { path: '/app/inventario',      element: <Inventario /> },
+      { path: '/app/mantenimientos',  element: <Mantenimientos /> },
 
       // Reportes: misma página con modos
       { path: '/app/reportes',            element: <Reportes /> },
@@ -70,6 +78,7 @@ const Router = [
       { path: '/app/reportes/inventario', element: <Reportes /> },                  
       { path: '/app/reportes/uso-global',          element: <Reportes mode="global" /> },
       { path: '/app/reportes/inventario',          element: <Reportes mode="inventario" /> },
+      { path: '/app/reportes/mantenimiento',     element: <ReportesMantenimiento /> },
 
       { path: '/app/bitacora',        element: <Bitacora /> },
 

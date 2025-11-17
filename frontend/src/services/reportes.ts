@@ -102,3 +102,5 @@ export async function downloadInventarioPdf() {
   });
   return res.data as Blob;
 }
+
+
