@@ -281,3 +281,75 @@ BEFORE INSERT OR UPDATE OF aprobada_en ON solicitudes
 FOR EACH ROW EXECUTE FUNCTION set_fecha_devolucion();
 
 
+-- ============================================================
+-- MÓDULO 1.3 — Administración de Préstamos y Devoluciones
+--  - Registra entrega física de recursos aprobados (solicitudes)
+--  - Permite marcar devoluciones, retrasos y pérdidas
+--  - Se integra con equipos_fijos (cantidad_disponible) e historial_laboratorio
+-- ============================================================
+
+-- Extender el CHECK de historial_laboratorio para incluir acciones de préstamos
+ALTER TABLE historial_laboratorio
+  DROP CONSTRAINT IF EXISTS historial_laboratorio_accion_check;
+
+ALTER TABLE historial_laboratorio
+  ADD CONSTRAINT historial_laboratorio_accion_check CHECK (
+    accion IN (
+      'creacion_lab',
+      'actualizacion_lab',
+      'alta_equipo',
+      'actualizacion_equipo',
+      'cambio_estado_equipo',
+      'mantenimiento_registrado',
+      'politica_creada',
+      'politica_actualizada',
+      'reserva_creada',
+      'reserva_aprobada',
+      'reserva_rechazada',
+      -- nuevas
+      'prestamo_creado',
+      'prestamo_devuelto',
+      'prestamo_retrasado',
+      'prestamo_perdido',
+      'otro'
+    )
+  );
+
+-- Tabla de préstamos (1 recurso por solicitud, según modelo actual de "solicitudes")
+CREATE TABLE IF NOT EXISTS prestamos (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  solicitud_id         UUID NOT NULL REFERENCES solicitudes(id)    ON DELETE RESTRICT,
+  laboratorio_id       UUID NOT NULL REFERENCES laboratorios(id)   ON DELETE RESTRICT,
+  recurso_id           UUID NOT NULL REFERENCES equipos_fijos(id)  ON DELETE RESTRICT,
+  usuario_id           UUID NOT NULL REFERENCES users(id)          ON DELETE RESTRICT,
+
+  tecnico_entrega_id   UUID NOT NULL REFERENCES users(id)          ON DELETE RESTRICT,
+  tecnico_recibe_id    UUID         REFERENCES users(id)           ON DELETE SET NULL,
+
+  fecha_entrega        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  fecha_estimada_devol TIMESTAMPTZ NOT NULL,  -- normalmente solicitudes.fecha_devolucion
+  fecha_devolucion     TIMESTAMPTZ,
+
+  estado               TEXT NOT NULL CHECK (
+                        estado IN ('en_prestamo','devuelto','retrasado','perdido','cancelado')
+                      ),
+
+  observaciones_entrega    TEXT,
+  observaciones_devolucion TEXT,
+
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_prestamos_estado
+  ON prestamos(estado);
+
+CREATE INDEX IF NOT EXISTS idx_prestamos_usuario
+  ON prestamos(usuario_id, fecha_entrega DESC);
+
+CREATE INDEX IF NOT EXISTS idx_prestamos_lab
+  ON prestamos(laboratorio_id, fecha_entrega DESC);
+
+CREATE INDEX IF NOT EXISTS idx_prestamos_recurso
+  ON prestamos(recurso_id, fecha_entrega DESC);

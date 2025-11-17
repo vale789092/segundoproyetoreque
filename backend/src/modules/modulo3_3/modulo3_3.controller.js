@@ -3,6 +3,7 @@ import {
   createRequest, listMyRequests, getRequestById,
   updateRequestOwned, deletePendingOwned, setStatus, listRequestsAll,
 } from "./modulo3_3.model.js";
+import { aprobarSolicitudDB } from "../modulo1_3/modulo1_3.model.js";
 
 function send(res, code, message) {
   return res.status(code).json({ error: { code, message } });
@@ -105,3 +106,23 @@ export async function listRequestsAllCtrl(req, res, next) {
 }
 
 
+export async function approveSolicitud(req, res, next) {
+  try {
+    const solicitudId = req.params.solicitudId;
+    if (!solicitudId) {
+      return res.status(400).json({ error: "solicitudId requerido" });
+    }
+
+    const aprobadorId = req.user?.sub || req.user?.id;
+
+    await aprobarSolicitudDB(solicitudId, aprobadorId);
+    return res.status(204).end();
+  } catch (err) {
+    if (err.code === "REQ_NOT_FOUND") {
+      return res
+        .status(404)
+        .json({ error: "Solicitud no encontrada o ya procesada." });
+    }
+    next(err);
+  }
+}
