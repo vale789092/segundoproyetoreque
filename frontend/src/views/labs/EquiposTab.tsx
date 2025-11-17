@@ -123,9 +123,6 @@ export default function EquiposTab({ labId }: Props) {
               </div>
 
               <div className="mt-3 flex items-center gap-2">
-                <Button color="light" size="xs" onClick={()=>window.location.assign(`/app/labs/${labId}?equipo=${eq.id}`)}>
-                  Ver ficha / solicitar
-                </Button>
                 {canManage && (
                   <>
                     <Button color="light" size="xs"
@@ -222,7 +219,7 @@ export default function EquiposTab({ labId }: Props) {
 
               <div className="flex justify-end gap-2">
                 <Button color="light" type="button" onClick={()=>setShowCreate(false)}>Cancelar</Button>
-                <Button type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar"}</Button>
+                <Button color="light" type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar"}</Button>
               </div>
             </form>
           </div>
