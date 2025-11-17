@@ -224,7 +224,7 @@ PORT=3000
 DATABASE_URL=postgres://appuser:apppass@db:5432/appdb
 CORS_ORIGIN=http://localhost:5173
 
-
+```
 
 =======================================
 
