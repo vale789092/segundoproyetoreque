@@ -34,18 +34,15 @@ const SidebarContent: SidebarSection[] = [
   },
 
   // Sección propia para Reportes 
-  {
+    {
     heading: "Reportes",
-    roles: ["profesor","tecnico","admin"],
     children: [
-      { id: "rep-home",       title: "Resumen",    to: "/app/reportes" },
-      { id: "rep-global",     title: "Uso global", to: "/app/reportes/uso-global" },
-      { id: "rep-inventario", title: "Inventario", to: "/app/reportes/inventario" },
-      // (a futuro) { id: "rep-consumos", title: "Consumo de materiales", to: "/app/reportes/consumos" },
-      // (a futuro) { id: "rep-desempeno", title: "Desempeño", to: "/app/reportes/desempeno" },
-      { id: "rep-mant",       title: "Mantenimiento", to: "/app/reportes/mantenimiento" }
+      { id: "rep-home",       title: "Resumen",    to: "/app/reportes",                 roles: ["tecnico","admin"] },
+      { id: "rep-global",     title: "Uso global", to: "/app/reportes/uso-global",      roles: ["tecnico","admin"] },
+      { id: "rep-inventario", title: "Inventario", to: "/app/reportes/inventario",      roles: ["tecnico","admin"] },
+      { id: "rep-mant",       title: "Mantenimiento", to: "/app/reportes/mantenimiento", roles: ["tecnico","admin"] },
     ],
-  },
+  }
 ];
 
 export default SidebarContent;
