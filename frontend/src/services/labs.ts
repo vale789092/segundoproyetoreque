@@ -131,20 +131,59 @@ export async function deleteLabPolicy(labId: string, policyId: string) {
   return data as { ok: boolean };
 }
 
-
-
-/* =========================
- * Horarios (placeholder o real)
- * ========================= */
-export type LabSlot = { fecha: string; desde: string; hasta: string; bloqueado?: boolean; motivo?: string | null };
-export async function listLabHorarios(labId: string, fecha: string) {
-  const { data } = await api.get(`/labs/${labId}/horarios?fecha=${fecha}`);
-  return data as LabSlot[];
-}
-
 /* =========================
  * Equipos (1.1.3)
  * ========================= */
+
+export type LabBloqueo = {
+  id: string;
+  titulo: string;
+  tipo: "evento" | "mantenimiento" | "uso_exclusivo" | "bloqueo";
+  ts_inicio: string;   // ISO que devuelve el backend
+  ts_fin: string;
+  descripcion?: string | null;
+};
+
+export type CreateLabBloqueoInput = {
+  titulo: string;
+  tipo: LabBloqueo["tipo"];
+  fecha: string;        // "YYYY-MM-DD"
+  hora_inicio: string;  // "HH:MM" o "HH:MM:SS"
+  hora_fin: string;     // idem
+  descripcion?: string | null;
+};
+
+export async function listLabBloqueos(
+  labId: string,
+  params?: { desde?: string; hasta?: string }
+): Promise<LabBloqueo[]> {
+  const qs = new URLSearchParams();
+  if (params?.desde) qs.set("desde", params.desde);
+  if (params?.hasta) qs.set("hasta", params.hasta);
+
+  const { data } = await api.get(
+    `/labs/${labId}/horarios/bloqueos${qs.toString() ? `?${qs}` : ""}`
+  );
+  return data as LabBloqueo[];
+}
+
+export async function createLabBloqueo(
+  labId: string,
+  payload: CreateLabBloqueoInput
+) {
+  const { data } = await api.post(
+    `/labs/${labId}/horarios/bloqueos`,
+    payload
+  );
+  return data as { id: string };
+}
+
+export async function deleteLabBloqueo(labId: string, bloqueoId: string) {
+  const { data } = await api.delete(
+    `/labs/${labId}/horarios/bloqueos/${bloqueoId}`
+  );
+  return data as { ok: boolean };
+}
 
 export async function listEquiposByCriteria({ labId, soloDisponibles = false }: { labId: string; soloDisponibles?: boolean }) {
   const params = new URLSearchParams();
@@ -234,4 +273,48 @@ export async function listLabHistory(
   // backend puede devolver {rows,total} o [] — normalizamos
   if (Array.isArray(data)) return { rows: data, total: data.length };
   return data as { rows: LabHistoryRow[]; total?: number };
+}
+
+/* =========================
+ * Horarios (placeholder o real)
+ * ========================= */
+export type LabSlot = {
+  fecha: string;
+  desde: string;
+  hasta: string;
+  bloqueado?: boolean;
+  motivo?: string | null;
+  tipo_bloqueo?:
+    | "evento"
+    | "mantenimiento"
+    | "uso_exclusivo"
+    | "bloqueo"
+    | null;
+  capacidad_maxima?: number | null;
+  reservas_aprobadas?: number | null;
+};
+
+export async function listLabHorarios(labId: string, fecha: string) {
+  const { data } = await api.get(`/labs/${labId}/horarios?fecha=${fecha}`);
+  return data as LabSlot[];
+}
+
+export type CreateLabHorarioInput = {
+  dow: number;              // 0=domingo ... 6=sábado
+  hora_inicio: string;      // "HH:MM"
+  hora_fin: string;         // "HH:MM"
+  capacidad_maxima: number;
+};
+
+export async function createLabHorario(
+  labId: string,
+  payload: {
+    dow: number;
+    hora_inicio: string;
+    hora_fin: string;
+    capacidad_maxima: number;
+  }
+) {
+  const { data } = await api.post(`/labs/${labId}/horarios`, payload);
+  return data as { id: string };
 }
