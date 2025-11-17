@@ -3,8 +3,10 @@ import { pool } from "../db/index.js";
 import authRoutes from "../modules/auth/auth.routes.js";
 import { labsRouter } from "../modules/modulo1_1/modulo1_1.routes.js";
 import modulo1_2Router from "../modules/modulo1_2/modulo1_2.routes.js";
+import modulo2_3Router from "../modules/modulo2_3/modulo2_3.routes.js";
 import modulo3_3 from "../modules/modulo3_3/modulo3_3.routes.js";
 import modulo3_4 from "../modules/modulo3_4/modulo3_4.routes.js";
+import reportesRouter from "../modules/modulo2_4/modulo2_4.routes.js";
 
 export const router = Router();
 
@@ -19,6 +21,8 @@ router.get("/health", async (_req, res, next) => {
 router.use("/auth", authRoutes);
 router.use("/labs", labsRouter);
 router.use("/labs", modulo1_2Router);
+router.use("/maintenances", modulo2_3Router);
+router.use("/reports", reportesRouter);
 
 // 3.3 Gestión de solicitudes y reservas
 router.use("/requests", modulo3_3);
