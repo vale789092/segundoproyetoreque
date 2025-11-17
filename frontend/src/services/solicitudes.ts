@@ -1,5 +1,5 @@
 // src/services/solicitudes.ts
-import api from "./api";
+import api, { parseError } from "./api";
 
 export type SolicitudEstado = "pendiente" | "aprobada" | "rechazada" | "en_revision";
 
@@ -18,6 +18,7 @@ export type SolicitudRow = {
   recurso_id: string;
   recurso_nombre: string;
   codigo_inventario: string;
+  fecha_devolucion?: string | null;
 };
 export type SolicitudCreate = {
   laboratorio_id: string;
@@ -119,3 +120,10 @@ export async function setSolicitudStatus(id: string, estado: "aprobada"|"rechaza
   return data as { id: string; estado: SolicitudEstado; aprobada_en?: string | null };
 }
 
+export async function approveSolicitud(id: string): Promise<void> {
+  try {
+    await api.post(`/requests/${id}/approve`, {});
+  } catch (err) {
+    throw new Error(parseError(err));
+  }
+}

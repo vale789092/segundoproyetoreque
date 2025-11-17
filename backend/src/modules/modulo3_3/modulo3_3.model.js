@@ -273,4 +273,65 @@ export async function listRequestsAll({ estado, lab_id, q, limit = 50, offset = 
   return rows;
 }
 
+/**
+ * Aprueba una solicitud:
+ *  - estado = 'aprobada'
+ *  - aprobada_en = now()
+ *  - equipo pasa a estado_disp = 'reservado' y cantidad_disponible - 1
+ */
+export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
+    // 1) Traer solicitud y recurso asociado
+    const sRes = await client.query(
+      `
+      SELECT id, recurso_id
+      FROM solicitudes
+      WHERE id = $1 AND estado = 'pendiente'
+      FOR UPDATE
+      `,
+      [solicitudId]
+    );
+
+    if (sRes.rowCount === 0) {
+      const e = new Error("Solicitud no encontrada o ya procesada.");
+      e.code = "REQ_NOT_FOUND";
+      throw e;
+    }
+
+    const { recurso_id } = sRes.rows[0];
+
+    // 2) Marcar solicitud como aprobada
+    await client.query(
+      `
+      UPDATE solicitudes
+      SET estado = 'aprobada',
+          aprobada_en = now()
+      WHERE id = $1
+      `,
+      [solicitudId]
+    );
+
+    // 3) Marcar el equipo como RESERVADO y bajar en 1 la disponibilidad
+    await client.query(
+      `
+      UPDATE equipos_fijos
+      SET estado_disp = 'reservado',
+          cantidad_disponible = GREATEST(0, cantidad_disponible - 1),
+          updated_at = now()
+      WHERE id = $1
+      `,
+      [recurso_id]
+    );
+
+    await client.query("COMMIT");
+    return true;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

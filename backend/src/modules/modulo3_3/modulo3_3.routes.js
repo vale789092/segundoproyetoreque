@@ -2,6 +2,9 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../../middleware/auth.js";
 import * as C from "./modulo3_3.controller.js";
+import {
+  approveSolicitud,
+} from "./modulo3_3.controller.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -18,5 +21,12 @@ router.delete("/:id", C.deleteRequestCtrl);
 
 // Estado (técnico/admin)
 router.patch("/:id/status", requireRole(["tecnico","admin"]), C.setStatusCtrl);
+
+// Aprobar solicitud → reserva equipo
+router.post(
+  "/:solicitudId/approve",
+  requireRole(["tecnico", "admin"]),
+  approveSolicitud
+);
 
 export default router;
