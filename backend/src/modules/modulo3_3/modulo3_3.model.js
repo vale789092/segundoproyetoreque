@@ -1,5 +1,7 @@
 // backend/src/modules/modulo3_3/modulo3_3.model.js
 import { pool } from "../../db/index.js";
+import { notifySolicitudEstadoCambio } from "../modulo3_5/modulo3_5.model.js";
+
 
 async function assertLab(labId) {
   const r = await pool.query(`SELECT 1 FROM laboratorios WHERE id=$1`, [labId]);
@@ -188,35 +190,95 @@ export async function deletePendingOwned({ id, usuario_id }) {
 
 /** Cambia estado (técnico/admin) con re-chequeo de traslape al aprobar */
 export async function setStatus({ id, estado, aprobada_en, actor_user_id }) {
-  const allowed = new Set(["aprobada","rechazada","en_revision"]);
-  if (!allowed.has(estado)) { const e = new Error("Estado inválido"); e.status = 400; throw e; }
+  const allowed = new Set(["aprobada", "rechazada", "en_revision"]);
+  if (!allowed.has(estado)) {
+    const e = new Error("Estado inválido");
+    e.status = 400;
+    throw e;
+  }
 
-  const cur = (await pool.query(
-    `SELECT laboratorio_id, recurso_id, fecha_uso_inicio, fecha_uso_fin FROM solicitudes WHERE id=$1`, [id]
-  )).rows[0];
+  // Leer la solicitud actual
+  const curRes = await pool.query(
+    `
+    SELECT laboratorio_id, recurso_id, fecha_uso_inicio, fecha_uso_fin, usuario_id
+      FROM solicitudes
+     WHERE id = $1
+    `,
+    [id]
+  );
+  const cur = curRes.rows[0];
   if (!cur) return null;
 
+  // Si se aprueba, verificar traslapes
   if (estado === "aprobada") {
     await assertNoOverlapAprobadas({
-      recurso_id: cur.recurso_id, ini: cur.fecha_uso_inicio, fin: cur.fecha_uso_fin, excludeId: id
+      recurso_id: cur.recurso_id,
+      ini: cur.fecha_uso_inicio,
+      fin: cur.fecha_uso_fin,
+      excludeId: id,
     });
   }
 
-  const setCols = [`estado=$2`];
+  // Armar UPDATE dinámico
+  const setCols = [`estado = $2`];
   const params = [id, estado];
-  if (estado === "aprobada") { setCols.push(`aprobada_en=COALESCE($3, now())`); params.push(aprobada_en ?? null); }
-  else { setCols.push(`aprobada_en=NULL`); }
+
+  if (estado === "aprobada") {
+    setCols.push(`aprobada_en = COALESCE($3, now())`);
+    params.push(aprobada_en ?? null);
+  } else {
+    setCols.push(`aprobada_en = NULL`);
+  }
 
   const { rows } = await pool.query(
-    `UPDATE solicitudes SET ${setCols.join(", ")} WHERE id=$1 RETURNING id, estado, aprobada_en`,
+    `
+    UPDATE solicitudes
+       SET ${setCols.join(", ")}
+     WHERE id = $1
+     RETURNING id, estado, aprobada_en
+    `,
     params
   );
 
-  const accion = estado === 'aprobada' ? 'reserva_aprobada' : (estado === 'rechazada' ? 'reserva_rechazada' : 'actualizacion_lab');
-  await logHist(cur.laboratorio_id, accion, { solicitud_id: id, estado, actor_user_id }, actor_user_id);
+  const updated = rows[0];
 
-  return rows[0];
+  // Registrar en historial
+  const accion =
+    estado === "aprobada"
+      ? "reserva_aprobada"
+      : estado === "rechazada"
+      ? "reserva_rechazada"
+      : "actualizacion_lab";
+
+  await logHist(
+    cur.laboratorio_id,
+    accion,
+    { solicitud_id: id, estado, actor_user_id },
+    actor_user_id
+  );
+
+  // Notificación al dueño de la solicitud
+  try {
+    const recRes = await pool.query(
+      `SELECT nombre FROM equipos_fijos WHERE id = $1`,
+      [cur.recurso_id]
+    );
+    const recursoNombre = recRes.rows[0]?.nombre ?? "recurso";
+
+    await notifySolicitudEstadoCambio({
+      usuario_id: cur.usuario_id,
+      recurso_nombre: recursoNombre,
+      nuevoEstado: estado,
+    });
+  } catch (e) {
+    console.error("Error creando notificación de solicitud:", e);
+  }
+
+  return updated;
 }
+
+
+
 
 async function assertNoDupForUser({ usuario_id, recurso_id, ini, fin, excludeId=null }) {
   const params = [usuario_id, recurso_id, ini, fin];
@@ -284,13 +346,12 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
   try {
     await client.query("BEGIN");
 
-    // 1) Traer solicitud y recurso asociado
     const sRes = await client.query(
       `
-      SELECT id, recurso_id
-      FROM solicitudes
-      WHERE id = $1 AND estado = 'pendiente'
-      FOR UPDATE
+      SELECT id, recurso_id, usuario_id
+        FROM solicitudes
+       WHERE id = $1 AND estado = 'pendiente'
+       FOR UPDATE
       `,
       [solicitudId]
     );
@@ -301,32 +362,48 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
       throw e;
     }
 
-    const { recurso_id } = sRes.rows[0];
+    const { recurso_id, usuario_id } = sRes.rows[0];
 
-    // 2) Marcar solicitud como aprobada
     await client.query(
       `
       UPDATE solicitudes
-      SET estado = 'aprobada',
-          aprobada_en = now()
-      WHERE id = $1
+         SET estado = 'aprobada',
+             aprobada_en = now()
+       WHERE id = $1
       `,
       [solicitudId]
     );
 
-    // 3) Marcar el equipo como RESERVADO y bajar en 1 la disponibilidad
     await client.query(
       `
       UPDATE equipos_fijos
-      SET estado_disp = 'reservado',
-          cantidad_disponible = GREATEST(0, cantidad_disponible - 1),
-          updated_at = now()
-      WHERE id = $1
+         SET estado_disp = 'reservado',
+             cantidad_disponible = GREATEST(0, cantidad_disponible - 1),
+             updated_at = now()
+       WHERE id = $1
       `,
       [recurso_id]
     );
 
     await client.query("COMMIT");
+
+    // Notificación al usuario dueño
+    try {
+      const recRes = await pool.query(
+        `SELECT nombre FROM equipos_fijos WHERE id = $1`,
+        [recurso_id]
+      );
+      const recursoNombre = recRes.rows[0]?.nombre ?? "recurso";
+
+      await notifySolicitudEstadoCambio({
+        usuario_id,
+        recurso_nombre: recursoNombre,
+        nuevoEstado: "aprobada",
+      });
+    } catch (e) {
+      console.error("Error notificando aprobación de solicitud:", e);
+    }
+
     return true;
   } catch (err) {
     await client.query("ROLLBACK");
@@ -335,3 +412,4 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
     client.release();
   }
 }
+

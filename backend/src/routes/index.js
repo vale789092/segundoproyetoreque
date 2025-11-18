@@ -13,6 +13,7 @@ import modulo4_4 from "../modules/modulo4_4/modulo4_4.route.js";
 import reportesRouter from "../modules/modulo2_4/modulo2_4.routes.js";
 import usersRoutes from "../modules/users/users.routes.js";
 import prestamosRouter from "../modules/modulo1_3/modulo1_3.routes.js";
+import modulo3_5Router from "../modules/modulo3_5/modulo3_5.routes.js";
 
 export const router = Router();
 
@@ -39,3 +40,5 @@ router.use("/users", usersRoutes);
 router.use("/admin/users", usersRoutes);
 
 router.use("/prestamos", prestamosRouter);
+
+router.use("/notifications", modulo3_5Router);

@@ -353,3 +353,17 @@ CREATE INDEX IF NOT EXISTS idx_prestamos_lab
 
 CREATE INDEX IF NOT EXISTS idx_prestamos_recurso
   ON prestamos(recurso_id, fecha_entrega DESC);
+
+
+CREATE TABLE notificaciones (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  titulo      text NOT NULL,
+  mensaje     text NOT NULL,
+  link        text,
+  leida       boolean NOT NULL DEFAULT false,
+  creada_en   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_notificaciones_usuario
+  ON notificaciones(usuario_id, leida, creada_en DESC);
