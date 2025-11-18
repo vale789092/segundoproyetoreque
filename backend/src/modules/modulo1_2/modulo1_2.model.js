@@ -32,17 +32,20 @@ const COL = {
 const DOW_VALIDOS = new Set([0, 1, 2, 3, 4, 5, 6]);
 
 /* ---------- Utilidades ---------- */
+// Reemplaza esta función
 export async function assertLabExists(labId) {
+  // tolera uuid, integer, etc. comparando en texto
   const { rowCount } = await pool.query(
-    `SELECT 1 FROM ${TB.labs} WHERE ${COL.labs.id}=$1`,
-    [labId]
+    `SELECT 1 FROM laboratorios WHERE id::text = $1`,
+    [String(labId)]
   );
   if (!rowCount) {
     const err = new Error("Laboratorio no existe");
-    err.code = "23503";
+    err.status = 404;            // ← 404 claro
     throw err;
   }
 }
+
 
 /** Verifica que no exista traslape con otras franjas del mismo lab/dow */
 async function assertNoOverlapHorario(
@@ -263,4 +266,29 @@ export async function deleteHorario(labId, slotId, actorId) {
     );
   }
   return !!rowCount;
+}
+
+export async function listLabHistoryAll(labId, limit = 2000) {
+  await assertLabExists(labId);
+  const { rows } = await pool.query(
+    `
+    SELECT
+      h.creado_en               AS ts,
+      h.accion,
+      h.detalle,
+      l.id::text                AS lab_id,
+      l.nombre                  AS lab_nombre,
+      u.id::text                AS user_id,
+      u.nombre                  AS user_nombre,
+      u.correo                  AS user_correo
+    FROM historial_laboratorio h
+    JOIN laboratorios l ON l.id = h.laboratorio_id
+    LEFT JOIN users u    ON u.id = h.usuario_id
+    WHERE h.laboratorio_id = $1::uuid
+    ORDER BY h.creado_en DESC
+    LIMIT $2
+    `,
+    [labId, Math.max(1, Number(limit) || 2000)]
+  );
+  return rows;
 }

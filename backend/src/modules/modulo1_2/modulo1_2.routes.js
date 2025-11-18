@@ -6,9 +6,15 @@ const router = Router();
 
 router.use(requireAuth);
 // 1.2.1 — Horario base semanal (por laboratorio)
+
+/** ===== BITÁCORA (filtra por :labId) ===== */
+router.get("/:labId/history",     requireRole(["admin"]), H.listHistory);   // JSON
+router.get("/:labId/history.pdf", requireRole(["admin"]), H.historyPdf); 
+
 router.post("/:labId/horarios", requireRole(["admin"]),  H.createHorario);
 router.get("/:labId/horarios", H.listHorarios);
 router.patch("/:labId/horarios/:slotId", requireRole(["admin"]), H.updateHorario);
 router.delete("/:labId/horarios/:slotId", requireRole(["admin"]), H.deleteHorario);
+
 
 export default router;
