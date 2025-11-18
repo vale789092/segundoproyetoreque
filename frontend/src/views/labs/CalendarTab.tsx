@@ -551,7 +551,7 @@ export default function CalendarTab({ labId }: Props) {
             <Button size="xs" color="light" onClick={handleOpenSlotModal}>
               Nueva franja (horario base / fecha)
             </Button>
-            <Button size="xs" onClick={handleOpenBlockModal}>
+            <Button size="xs" color="light" onClick={handleOpenBlockModal}>
               Nuevo bloqueo (evento/mantto/uso exclusivo)
             </Button>
           </div>
@@ -732,7 +732,7 @@ export default function CalendarTab({ labId }: Props) {
         </Modal.Body>
         <Modal.Footer className="flex flex-row justify-end gap-2">
             <Button
-                color="info"
+                color="light"               
                 onClick={handleSaveBlock}
                 isProcessing={savingBlock}
                 disabled={savingBlock}
@@ -832,7 +832,7 @@ export default function CalendarTab({ labId }: Props) {
         </Modal.Body>
         <Modal.Footer className="flex flex-row justify-end gap-2">
             <Button
-            color="info"
+            color="light"
             onClick={handleSaveSlot}
             isProcessing={savingSlot}
             disabled={savingSlot}
