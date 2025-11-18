@@ -106,7 +106,6 @@ export default function LabDetail() {
 
       <Tabs>
         <Tabs.Item title="Técnicos">
-          {/* CRUD de tecnicos_labs */}
           <div id="lab-technicians" />
           <TechniciansTable labId={labId} />
         </Tabs.Item>
@@ -130,9 +129,6 @@ export default function LabDetail() {
             <HistoryTab labId={labId} />
           </Tabs.Item>
         )}
-
-        
-
       </Tabs>
     </div>
   );
