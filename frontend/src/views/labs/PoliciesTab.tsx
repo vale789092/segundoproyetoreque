@@ -23,7 +23,7 @@ const emptyForm: Omit<LabPolicy, "id"> = {
 
 export default function PoliciesTab({ labId }: Props) {
   const me = (getUser() ?? {}) as { rol?: "estudiante"|"profesor"|"tecnico"|"admin" };
-  const isAdmin = me?.rol === "admin";
+  const canManage = me?.rol === "admin" || me?.rol === "tecnico";
 
   const [items, setItems] = React.useState<LabPolicy[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -130,7 +130,7 @@ export default function PoliciesTab({ labId }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="font-semibold">Políticas</h4>
-        {isAdmin && (
+        {canManage  && (
           <Button color="light" onClick={() => { setForm(emptyForm); setShowCreate(true); }}>
             <Plus className="mr-2 h-4 w-4" /> Agregar
           </Button>
@@ -166,7 +166,7 @@ export default function PoliciesTab({ labId }: Props) {
                 {p.vigente_hasta && <span>Hasta: {new Date(p.vigente_hasta).toLocaleDateString()}</span>}
               </div>
 
-              {isAdmin && (
+              {canManage  && (
                 <div className="mt-3 flex items-center gap-2">
                   <Button color="light" size="xs" onClick={() => setEditItem(p)}>
                     <Pencil className="h-4 w-4 mr-1" /> Editar

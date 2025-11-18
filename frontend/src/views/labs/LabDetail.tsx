@@ -2,12 +2,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router";
 import { Card, Tabs } from "flowbite-react";
-import { getLab } from "@/services/labs"; // 👈 quitamos listLabPolicies
+import { getLab } from "@/services/labs"; 
 import TechniciansTable from "@/views/labs/TechniciansTable";
 import PoliciesTab from "@/views/labs/PoliciesTab";
 import HistoryTab from "@/views/labs/HistoryTab";
 import CalendarTab from "@/views/labs/CalendarTab";
 import EquiposTab from "@/views/labs/EquiposTab";
+import { getUser } from "@/services/storage";
 
 type RouteParams = { id?: string; labId?: string };
 
@@ -26,6 +27,11 @@ export default function LabDetail() {
 
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const me = (getUser() ?? {}) as {
+    rol?: "estudiante" | "profesor" | "tecnico" | "admin";
+  };
+  const canSeeHistory = me.rol === "admin" || me.rol === "tecnico";
 
   // Carga detalle de lab
   useEffect(() => {
@@ -113,13 +119,19 @@ export default function LabDetail() {
           <EquiposTab labId={labId} />
         </Tabs.Item>
 
-        <Tabs.Item title="Historial">
-          <HistoryTab labId={labId} />
-        </Tabs.Item>
-
+        {canSeeHistory && (
         <Tabs.Item title="Calendario">
           <CalendarTab labId={labId} />
         </Tabs.Item>
+        )}
+
+        {canSeeHistory && (
+          <Tabs.Item title="Historial">
+            <HistoryTab labId={labId} />
+          </Tabs.Item>
+        )}
+
+        
 
       </Tabs>
     </div>

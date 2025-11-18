@@ -24,19 +24,22 @@ labsRouter.delete("/:labId/technicians/:tecLabId", requireRole(["admin"]), C.rem
 
 
 /** POLÍTICAS (requisitos) */
-labsRouter.post("/:labId/policies", requireRole(["admin"]), C.createPolicy);
+// ✅ ahora admin y tecnico pueden hacer CRUD
+labsRouter.post("/:labId/policies", requireRole(["admin","tecnico"]), C.createPolicy);
 labsRouter.get("/:labId/policies",  C.listPolicies);
-labsRouter.patch("/:labId/policies/:policyId", requireRole(["admin"]), C.updatePolicy);
-labsRouter.delete("/:labId/policies/:policyId", requireRole(["admin"]), C.deletePolicy);
+labsRouter.patch("/:labId/policies/:policyId", requireRole(["admin","tecnico"]), C.updatePolicy);
+labsRouter.delete("/:labId/policies/:policyId", requireRole(["admin","tecnico"]), C.deletePolicy);
 
 /** BITÁCORA */
-labsRouter.get("/:labId/history",requireRole(["admin"]), C.listHistory);
+// ✅ admin y tecnico pueden ver historial
+labsRouter.get("/:labId/history", requireRole(["admin","tecnico"]), C.listHistory);
 
 // 1.1.3 Recursos fijos
-labsRouter.post("/:labId/equipos", requireRole(["admin"]), C.createEquipo);
+// ✅ admin y tecnico pueden CRUD equipos
+labsRouter.post("/:labId/equipos", requireRole(["admin","tecnico"]), C.createEquipo);
 labsRouter.get("/:labId/equipos", C.listEquipos);
 labsRouter.get("/:labId/equipos/:equipoId", C.getEquipo);
-labsRouter.patch("/:labId/equipos/:equipoId", requireRole(["admin"]), C.updateEquipo);
-labsRouter.delete("/:labId/equipos/:equipoId", requireRole(["admin"]), C.deleteEquipo);
+labsRouter.patch("/:labId/equipos/:equipoId", requireRole(["admin","tecnico"]), C.updateEquipo);
+labsRouter.delete("/:labId/equipos/:equipoId", requireRole(["admin","tecnico"]), C.deleteEquipo);
 
 export default labsRouter;
