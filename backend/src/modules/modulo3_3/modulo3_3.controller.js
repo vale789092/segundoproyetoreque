@@ -86,6 +86,15 @@ export async function setStatusCtrl(req, res, next) {
   try {
     const { id } = req.params;
     const { estado, aprobada_en } = req.body || {};
+
+    // Si aprueba, usa el flujo que también reserva el equipo.
+    if (estado === "aprobada") {
+      const aprobadorId = req.user?.id || req.user?.sub || null;
+      await aprobarSolicitudDB(id, aprobadorId);  // <-- reserva y descuenta stock
+      return res.status(200).json({ id, estado: "aprobada" });
+    }
+
+    // Para otros estados, usa el model actual.
     const updated = await setStatus({ id, estado, aprobada_en, actor_user_id: req.user.id });
     if (!updated) return send(res, 404, "Solicitud no encontrada");
     return res.json(updated);

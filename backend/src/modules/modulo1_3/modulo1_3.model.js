@@ -11,7 +11,7 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
   try {
     await client.query("BEGIN");
 
-    // 1) Traer solicitud pendiente
+    // Lee solicitud pendiente y bloquea fila
     const sRes = await client.query(
       `
       SELECT id, recurso_id, laboratorio_id
@@ -21,16 +21,41 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
       `,
       [solicitudId]
     );
-
     if (sRes.rowCount === 0) {
       const e = new Error("Solicitud no encontrada o ya procesada.");
       e.code = "REQ_NOT_FOUND";
       throw e;
     }
-
     const { recurso_id, laboratorio_id } = sRes.rows[0];
 
-    // 2) Marcar solicitud como aprobada
+    // Bloquea equipo
+    const eRes = await client.query(
+      `
+      SELECT id,
+             cantidad_total,
+             COALESCE(cantidad_disponible, cantidad_total) AS cd_actual
+      FROM equipos_fijos
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [recurso_id]
+    );
+    if (eRes.rowCount === 0) {
+      const e = new Error("Equipo no existe");
+      e.code = "RES_NOT_FOUND";
+      throw e;
+    }
+    const { cantidad_total, cd_actual } = eRes.rows[0];
+    if (cd_actual <= 0) {
+      const e = new Error("Sin stock para reservar");
+      e.code = "NO_STOCK";
+      throw e;
+    }
+
+    const new_cd = Math.max(0, cd_actual - 1);
+    const new_estado = new_cd <= 0 ? "reservado" : "disponible";
+
+    // Aprueba solicitud
     await client.query(
       `
       UPDATE solicitudes
@@ -41,33 +66,29 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
       [solicitudId]
     );
 
-    // 3) Marcar el equipo como RESERVADO y bajar en 1 la disponibilidad
+    // Descuenta stock y ajusta estado (sin problemas con NULL)
     await client.query(
       `
       UPDATE equipos_fijos
-      SET estado_disp = 'reservado',
-          cantidad_disponible = GREATEST(0, cantidad_disponible - 1),
-          updated_at = now()
+      SET cantidad_disponible = $2,
+          estado_disp          = $3,
+          updated_at           = now()
       WHERE id = $1
       `,
-      [recurso_id]
+      [recurso_id, new_cd, new_estado]
     );
 
-    // (opcional) registrar en historial_laboratorio
+    // Bitácora
     await client.query(
       `
       INSERT INTO historial_laboratorio (laboratorio_id, usuario_id, accion, detalle)
-      VALUES ($1, $2, 'reserva_creada', $3::jsonb)
+      VALUES ($1, $2, 'reserva_aprobada', $3::jsonb)
       `,
-      [
-        laboratorio_id,
-        aprobadorId,
-        JSON.stringify({ solicitud_id: solicitudId, recurso_id })
-      ]
+      [laboratorio_id, aprobadorId ?? null, JSON.stringify({ solicitud_id: solicitudId, recurso_id, new_cd, new_estado })]
     );
 
     await client.query("COMMIT");
-    return true;
+    return { ok: true, recurso_id, cantidad_disponible: new_cd, estado_disp: new_estado };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -75,7 +96,6 @@ export async function aprobarSolicitudDB(solicitudId, aprobadorId) {
     client.release();
   }
 }
-
 /**
  * Lista “préstamos” en función de solicitudes aprobadas + estado del equipo.
  * estado: 'activos' | 'devueltos' | 'todos'
