@@ -19,6 +19,8 @@ export type PrestamoItem = {
   estado_disp: "disponible" | "reservado" | "en_mantenimiento" | "inactivo";
 };
 
+export type PrestamoRow = PrestamoItem;
+
 export async function listPrestamos(opts?: {
   estado?: EstadoPrestamoFiltro;
   q?: string;

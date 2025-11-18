@@ -28,18 +28,18 @@ const ReportesMantenimiento = Loadable(
 const Bitacora   = Loadable(lazy(() => import('../views/operacion/Bitacora')));
 
 // Utilities
-const Typography   = Loadable(lazy(() => import("../../templateArchive/typography/Typography")));
-const Table        = Loadable(lazy(() => import("../../templateArchive/tables/Table")));
-const Alert        = Loadable(lazy(() => import("../../templateArchive/alerts/Alerts")));
+const Typography   = Loadable(lazy(() => import("../typography/Typography")));
+const Table        = Loadable(lazy(() => import("../tables/Table")));
+const Alert        = Loadable(lazy(() => import("../alerts/Alerts")));
 const Perfil       = Loadable(lazy(() => import("../views/perfil/Perfil")));
 
 // Icons
-const Solar        = Loadable(lazy(() => import("../../templateArchive/icons/Solar")));
+const Solar        = Loadable(lazy(() => import("../icons/Solar")));
 
 // Auth
 const Login        = Loadable(lazy(() => import('../views/auth/login/Login')));
 const Register     = Loadable(lazy(() => import('../views/auth/register/Register')));
-const SamplePage   = Loadable(lazy(() => import('../../templateArchive/sample-page/SamplePage')));
+const SamplePage   = Loadable(lazy(() => import('../sample-page/SamplePage')));
 const ErrorPage    = Loadable(lazy(() => import('../views/auth/error/Error')));
 
 // Labs

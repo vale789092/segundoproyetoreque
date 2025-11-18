@@ -1,5 +1,5 @@
 
-import BasicForm from 'templateArchive/forms/BasicForm'
+import BasicForm from '@/forms/BasicForm'
 
 const Form = () => {
   return (

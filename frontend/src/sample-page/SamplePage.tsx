@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import React from 'react';
-import CardBox from '../../src/components/shared/CardBox';
+import CardBox from '../components/shared/CardBox';
 
 
 const SamplePage = () => {

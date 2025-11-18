@@ -16,7 +16,7 @@ export default function Reservas() {
 
   const [labId, setLabId] = useState<string>("");
   const [openForm, setOpenForm] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [, setSending] = useState(false);
 
   useEffect(()=>{ (async()=>{
     setLoading(true);

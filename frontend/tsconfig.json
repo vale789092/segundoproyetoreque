@@ -28,5 +28,5 @@
     /* (opcional) asegura tipos de Vite/SVG como componentes */
     "types": ["vite/client"]
   },
-  "include": ["src", "templateArchive/typography", "templateArchive/tables", "templateArchive/forms", "templateArchive/alerts", "templateArchive/icons", "templateArchive/chats", "templateArchive/sample-page", "templateArchive/shadows", "src/components/shared", "templateArchive/theme"]
+  "include": ["src", "src/typography", "templateArchive/tables", "src/forms", "src/alerts", "src/icons", "src/chats", "src/sample-page", "src/shadows", "src/components/shared", "src/theme"]
 }
