@@ -7,6 +7,7 @@ const TB = {
   bloqueos: "laboratorio_bloqueos",
   history: "historial_laboratorio",
   users: "users",
+  solicitudes: "solicitudes",  // <--- NUEVO
 };
 
 const COL = {
@@ -37,6 +38,13 @@ const COL = {
     userId: "usuario_id",
     detalle: "detalle",
     creado: "creado_en",
+  },
+    solicitudes: {
+    id: "id",
+    labId: "laboratorio_id",
+    inicio: "fecha_uso_inicio",
+    fin: "fecha_uso_fin",
+    estado: "estado",
   },
 };
 
@@ -271,8 +279,10 @@ export async function listReservasDia(labId, fechaStr) {
 
   const { rows } = await pool.query(
     `SELECT
+       ${COL.solicitudes.id}     AS id,
        ${COL.solicitudes.inicio} AS fecha_uso_inicio,
-       ${COL.solicitudes.fin}    AS fecha_uso_fin
+       ${COL.solicitudes.fin}    AS fecha_uso_fin,
+       ${COL.solicitudes.estado} AS estado
      FROM ${TB.solicitudes}
     WHERE ${COL.solicitudes.labId} = $1
       AND ${COL.solicitudes.estado} = 'aprobada'

@@ -445,24 +445,24 @@ export default function CalendarTab({ labId }: Props) {
                   <div className="space-y-1">
                     {slots.map((s, idx) => (
                         <div
-                        key={`${iso}-${idx}-${s.desde}-${s.hasta}-${s.tipo_bloqueo ?? ""}`}
-                        className={`rounded px-2 py-1 text-[11px] border ${
+                            key={`${iso}-${idx}-${s.desde}-${s.hasta}-${s.tipo_bloqueo ?? ""}`}
+                            className={`rounded px-2 py-1 text-[11px] border ${
                             s.bloqueado
-                            ? "bg-red-50 border-red-300 text-red-700"
-                            : "bg-green-50 border-green-300 text-green-700"
-                        }`}
+                                ? "bg-red-50 border-red-300 text-red-700"
+                                : "bg-green-50 border-green-300 text-green-700"
+                            }`}
                         >
-                        <div>
+                            <div>
                             {s.desde.slice(0, 5)}–{s.hasta.slice(0, 5)}
-                        </div>
-                        <div className="text-[10px]">
+                            </div>
+                            <div className="text-[10px]">
                             {s.bloqueado
-                            ? s.motivo || "Bloqueado"
-                            : s.tipo_bloqueo === "evento"
-                            ? "Disponible (evento)"
-                            : "Disponible"}
-                        </div>
-                        {(typeof s.capacidad_maxima === "number" ||
+                                ? s.motivo || "Bloqueado"
+                                : s.tipo_bloqueo === "evento"
+                                ? "Disponible (evento)"
+                                : "Disponible"}
+                            </div>
+                            {(typeof s.capacidad_maxima === "number" ||
                             (typeof s.reservas_aprobadas === "number" &&
                                 s.reservas_aprobadas > 0)) && (
                             <div className="text-[9px] opacity-80">
@@ -472,15 +472,26 @@ export default function CalendarTab({ labId }: Props) {
                                 {typeof s.reservas_aprobadas === "number" &&
                                 s.reservas_aprobadas > 0 && (
                                     <>
-                                    {typeof s.capacidad_maxima === "number" ? " · " : ""}
+                                    {" · "}
                                     {s.reservas_aprobadas} reserva
                                     {s.reservas_aprobadas > 1 ? "s" : ""}
                                     </>
                                 )}
                             </div>
                             )}
+
+                            {/* AQUÍ pintamos cada reserva */}
+                            {Array.isArray(s.reservas) && s.reservas.length > 0 && (
+                            <div className="mt-0.5 space-y-0.5">
+                                {s.reservas.map((r) => (
+                                <div key={r.id} className="text-[9px] opacity-90">
+                                    • Reserva {r.desde}–{r.hasta}
+                                </div>
+                                ))}
+                            </div>
+                            )}
                         </div>
-                    ))}
+                        ))}
                     </div>
                 </div>
               );
@@ -584,22 +595,39 @@ export default function CalendarTab({ labId }: Props) {
                     </span>
                     </div>
                     {(typeof s.capacidad_maxima === "number" ||
-                    (typeof s.reservas_aprobadas === "number" &&
-                        s.reservas_aprobadas > 0)) && (
-                    <div className="text-[10px] opacity-80">
-                        {typeof s.capacidad_maxima === "number" && (
-                        <>Cap: {s.capacidad_maxima}</>
-                        )}
-                        {typeof s.reservas_aprobadas === "number" &&
-                        s.reservas_aprobadas > 0 && (
+                        typeof s.capacidad_disponible === "number" ||
+                        (typeof s.reservas_aprobadas === "number" &&
+                            s.reservas_aprobadas > 0)) && (
+                        <div className="text-[9px] opacity-80">
+                            {(typeof s.capacidad_disponible === "number" ||
+                            typeof s.capacidad_maxima === "number") && (
                             <>
-                            {typeof s.capacidad_maxima === "number" ? " · " : ""}
-                            {s.reservas_aprobadas} reserva
-                            {s.reservas_aprobadas > 1 ? "s" : ""}
+                                Cap:{" "}
+                                {typeof s.capacidad_disponible === "number"
+                                ? s.capacidad_disponible
+                                : s.capacidad_maxima}
                             </>
+                            )}
+                            {typeof s.reservas_aprobadas === "number" &&
+                            s.reservas_aprobadas > 0 && (
+                                <>
+                                {" · "}
+                                {s.reservas_aprobadas} reserva
+                                {s.reservas_aprobadas > 1 ? "s" : ""}
+                                </>
+                            )}
+                            {/* AQUÍ pintamos cada reserva */}
+                            {Array.isArray(s.reservas) && s.reservas.length > 0 && (
+                            <div className="mt-0.5 space-y-0.5">
+                                {s.reservas.map((r) => (
+                                <div key={r.id} className="text-[9px] opacity-90">
+                                    • Reserva {r.desde}–{r.hasta}
+                                </div>
+                                ))}
+                            </div>
+                            )}
+                        </div>
                         )}
-                    </div>
-                    )}
                 </div>
                 ))}
             </div>

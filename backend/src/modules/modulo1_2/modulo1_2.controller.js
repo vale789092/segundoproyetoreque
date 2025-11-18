@@ -58,31 +58,54 @@ export async function listHorarios(req, res) {
 
     // Caso con ?fecha=YYYY-MM-DD => slots del día
     if (fechaStr) {
-      // 👇 IMPORTANTÍSIMO: usar parseIsoLocal y no new Date("YYYY-MM-DD")
+      // usar parseIsoLocal y no new Date("YYYY-MM-DD")
       const d = parseIsoLocal(fechaStr);
       if (Number.isNaN(d.getTime())) {
         return send(res, 400, "fecha inválida (YYYY-MM-DD)");
       }
       const dow = d.getDay(); // 0..6 (0=domingo)
 
-      const base = await M.listHorariosByDow(labId, dow);
-      const bloqueosDia = await M.listBloqueosDia(labId, fechaStr);
+      // 1) horario base por DOW
+      // 2) bloqueos del día
+      // 3) reservas aprobadas del día
+      const [base, bloqueosDia, reservasDia] = await Promise.all([
+        M.listHorariosByDow(labId, dow),
+        M.listBloqueosDia(labId, fechaStr),
+        M.listReservasDia(labId, fechaStr),
+      ]);
 
-      // Separar bloqueos "normales" de las franjas creadas SOLO para esa fecha
+      // helper: devuelve TODAS las reservas aprobadas que traslapan la franja
+      function getReservasEnFranja(slotInicio, slotFin) {
+        const items = [];
+        for (const r of reservasDia) {
+          const rIni = new Date(r.fecha_uso_inicio);
+          const rFin = new Date(r.fecha_uso_fin);
+          if (Number.isNaN(rIni.getTime()) || Number.isNaN(rFin.getTime())) {
+            continue;
+          }
+          // traslape de [slotInicio,slotFin) con [rIni,rFin)
+          if (!(rFin <= slotInicio || rIni >= slotFin)) {
+            items.push({
+              id: r.id,
+              desde: rIni.toTimeString().slice(0, 5), // "HH:MM"
+              hasta: rFin.toTimeString().slice(0, 5),
+            });
+          }
+        }
+        return items;
+      }
+
+      // separo bloqueos "normales" de las franjas de un solo día
       const singles = [];
       const bloqueos = [];
 
       for (const b of bloqueosDia) {
         let descJson = null;
-
-        if (typeof b.descripcion === "string") {
-          const trimmed = b.descripcion.trim();
-          if (trimmed.startsWith("{")) {
-            try {
-              descJson = JSON.parse(trimmed);
-            } catch {
-              descJson = null;
-            }
+        if (b.descripcion) {
+          try {
+            descJson = JSON.parse(b.descripcion);
+          } catch {
+            descJson = null;
           }
         }
 
@@ -96,38 +119,53 @@ export async function listHorarios(req, res) {
           const ini = new Date(b.ts_inicio);
           const fin = new Date(b.ts_fin);
 
+          const reservas = getReservasEnFranja(ini, fin);
+          const reservasCount = reservas.length;
+          const capMax = descJson.capacidad_maxima;
+
+          let bloqueado = false;
+          let motivo = descJson.etiqueta || b.titulo || null;
+
+          // si está lleno por reservas, lo marcamos bloqueado
+          if (typeof capMax === "number" && reservasCount >= capMax) {
+            bloqueado = true;
+            motivo = `${reservasCount}/${capMax} reservas — cupo lleno`;
+          }
+
           singles.push({
             fecha: fechaStr,
-            // tomamos la HORA local
             desde: ini.toTimeString().slice(0, 5),  // "HH:MM"
-            hasta: fin.toTimeString().slice(0, 5),  // "HH:MM"
-            bloqueado: false,
-            motivo: descJson.etiqueta || b.titulo || null,
-            // lo marcamos como "evento" para que el front pueda mostrar
-            // "Disponible (evento)" si quiere
+            hasta: fin.toTimeString().slice(0, 5),
+            bloqueado,
+            motivo,
             tipo_bloqueo: "evento",
-            capacidad_maxima: descJson.capacidad_maxima,
-            reservas_aprobadas: 0,
+            capacidad_maxima: capMax,
+            reservas_aprobadas: reservasCount,
+            capacidad_disponible:
+              typeof capMax === "number"
+                ? Math.max(capMax - reservasCount, 0)
+                : null,
+            reservas, // <-- detalle de cada reserva aprobada en esa franja
           });
         } else {
-          // Bloqueos "reales" (mantto, uso_exclusivo, etc.)
+          // bloqueo real (evento/mantto/uso_exclusivo/bloqueo)
           bloqueos.push(b);
         }
       }
 
-      // Slots del horario base (se pueden bloquear por bloqueos normales)
+      // slots de horario base (semanal)
       const baseSlots = base.map((r) => {
-        const slotInicio = new Date(`${fechaStr}T${r.hora_inicio}`);
-        const slotFin = new Date(`${fechaStr}T${r.hora_fin}`);
+        const slotInicio = buildDateTimeLocal(fechaStr, r.hora_inicio);
+        const slotFin = buildDateTimeLocal(fechaStr, r.hora_fin);
 
         let bloqueado = false;
         let motivo = null;
         let tipo_bloqueo = null;
 
+        // ver si esta franja cae dentro de algún bloqueo
         for (const b of bloqueos) {
           const bIni = new Date(b.ts_inicio);
           const bFin = new Date(b.ts_fin);
-          // traslape de [slotInicio,slotFin) con [bIni,bFin)
           if (!(bFin <= slotInicio || bIni >= slotFin)) {
             bloqueado = true;
             motivo = b.descripcion || b.titulo || null;
@@ -139,26 +177,38 @@ export async function listHorarios(req, res) {
         const capacidad_maxima =
           typeof r.capacidad_maxima === "number" ? r.capacidad_maxima : null;
 
-        // Si en algún momento el query de horarios trae reservas_aprobadas,
-        // esto lo propagará al front. Mientras tanto es 0.
-        const reservas_aprobadas =
-          typeof r.reservas_aprobadas === "number"
-            ? r.reservas_aprobadas
-            : 0;
+        const reservas = getReservasEnFranja(slotInicio, slotFin);
+        const reservas_aprobadas = reservas.length;
+
+        const capacidad_disponible =
+          typeof capacidad_maxima === "number"
+            ? Math.max(capacidad_maxima - reservas_aprobadas, 0)
+            : null;
+
+        if (
+          typeof capacidad_maxima === "number" &&
+          reservas_aprobadas >= capacidad_maxima &&
+          !bloqueado
+        ) {
+          bloqueado = true;
+          motivo = `${reservas_aprobadas}/${capacidad_maxima} reservas — cupo lleno`;
+        }
 
         return {
           fecha: fechaStr,
-          desde: r.hora_inicio, // "HH:MM:SS"
+          desde: r.hora_inicio,
           hasta: r.hora_fin,
           bloqueado,
           motivo,
           tipo_bloqueo,
           capacidad_maxima,
           reservas_aprobadas,
+          capacidad_disponible,
+          reservas, // <-- detalle de cada reserva aprobada en esa franja
         };
       });
 
-      // Mezclamos horario base + franjas de un solo día y ordenamos por hora
+      // mezclamos slots base + "solo este día" y ordenamos por hora
       const slots = [...baseSlots, ...singles].sort((a, b) =>
         a.desde.localeCompare(b.desde)
       );

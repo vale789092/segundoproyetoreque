@@ -292,7 +292,14 @@ export type LabSlot = {
     | null;
   capacidad_maxima?: number | null;
   reservas_aprobadas?: number | null;
+  capacidad_disponible?: number | null;
+  reservas?: {              // <--- NUEVO
+    id: string;
+    desde: string;          // "HH:MM"
+    hasta: string;          // "HH:MM"
+  }[];
 };
+
 
 export async function listLabHorarios(labId: string, fecha: string) {
   const { data } = await api.get(`/labs/${labId}/horarios?fecha=${fecha}`);
