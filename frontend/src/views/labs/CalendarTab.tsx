@@ -767,28 +767,13 @@ export default function CalendarTab({ labId }: Props) {
                 <input
                   type="radio"
                   className="accent-blue-600"
-                  value="single"
-                  checked={slotMode === "single"}
-                  onChange={() => setSlotMode("single")}
-                />
-                <span>
-                  Aplicar <span className="font-semibold">solo</span> a la
-                  fecha {selectedDate}
-                </span>
-              </label>
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  className="accent-blue-600"
                   value="weekly"
                   checked={slotMode === "weekly"}
                   onChange={() => setSlotMode("weekly")}
                 />
                 <span>
-                  Guardar como horario base de{" "}
-                  <span className="font-semibold">
-                    todos los {selectedDayLabel || "días"}
-                  </span>
+                  Aplicar como horario base del {selectedDate} ({selectedDayLabel || "día"}).
+  
                 </span>
               </label>
             </div>
