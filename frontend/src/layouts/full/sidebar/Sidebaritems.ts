@@ -18,6 +18,8 @@ export type SidebarSection = {
   roles?: Rol[];
 };
 
+export type ChildItem = NavItem;
+
 const SidebarContent: SidebarSection[] = [
   {
     heading: "Operación",

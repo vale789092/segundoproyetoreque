@@ -31,21 +31,6 @@ function downloadBlob(blob: Blob, filename: string) {
   window.URL.revokeObjectURL(url);
 }
 
-const formatFechaHora = (iso?: string) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("es-CR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-};
-
-const prettyEvento = (evt: string) =>
-  evt
-    .replace(/_/g, " ")
-    .replace(/^\w/, (c) => c.toUpperCase());
-
 export default function Reportes() {
   const { pathname } = useLocation();
   const nav = useNavigate();
@@ -60,7 +45,6 @@ export default function Reportes() {
   const [mode, setMode] = useState<Mode>(pathMode);
   useEffect(() => setMode(pathMode), [pathMode]);
 
-  const modeToIndex: Record<Mode, number> = { resumen: 0, global: 1, inventario: 2 };
   const indexToMode = (i: number): Mode =>
     (["resumen", "global", "inventario"][i] as Mode);
 
@@ -80,7 +64,7 @@ export default function Reportes() {
   const [tipo, setTipo] = useState<"all" | "solicitudes" | "uso" | "devolucion">("all");
 
   // estado de datos
-  const [myRows, setMyRows] = useState<MyUsageRow[]>([]);
+  const [, setMyRows] = useState<MyUsageRow[]>([]);
   const [globalRows, setGlobalRows] = useState<UsoGlobalRow[]>([]);
   const [inventarioRows, setInventarioRows] = useState<InventarioRow[]>([]);
 

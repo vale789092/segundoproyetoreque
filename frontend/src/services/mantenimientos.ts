@@ -48,11 +48,13 @@ export async function listMaintenances(params?: {
   } catch (e) { throw new Error(parseError(e)); }
 }
 
-export async function getMaintenance(id: Id) {
+export async function getMaintenance(id: Id): Promise<MaintenanceDetail> {
   try {
     const { data } = await api.get(`${MAINT_BASE}/${id}`);
-    return data as MaintenanceRow;
-  } catch (e) { throw new Error(parseError(e)); }
+    return data as MaintenanceDetail;   // 👈 antes estaba MaintenanceRow
+  } catch (e) {
+    throw new Error(parseError(e));
+  }
 }
 
 /* ---- CREATE / PATCH ---- */

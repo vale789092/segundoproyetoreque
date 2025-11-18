@@ -1,4 +1,4 @@
-import api, { parseError } from "./api";
+import api from "./api";
 
 export async function nextSlotsForLab(labId: string, limit = 1): Promise<{inicio:string, fin:string}[]> {
   try {
