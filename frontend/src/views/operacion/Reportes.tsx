@@ -100,23 +100,27 @@ export default function Reportes() {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const buildMyUsageParams = () => {
-    const params: {
-      from?: string;
-      to?: string;
-      tipo?: "all" | "solicitudes" | "uso" | "devolucion";
-    } = {};
+  const params: {
+    from?: string;
+    to?: string;
+    tipo?: "solicitudes" | "uso" | "devolucion";
+  } = {};
 
-    if (!from && !to) {
-      params.from = DEFAULT_FROM_ALL;
-      params.to = todayStr;
-    } else {
-      if (from) params.from = from;
-      if (to) params.to = to;
-    }
+  if (!from && !to) {
+    params.from = DEFAULT_FROM_ALL;
+    params.to = todayStr;
+  } else {
+    if (from) params.from = from;
+    if (to) params.to = to;
+  }
 
+  // Solo mandar tipo cuando NO es "all"
+  if (tipo !== "all") {
     params.tipo = tipo;
-    return params;
-  };
+  }
+
+  return params;
+};
 
   const buildGlobalParams = () => {
     const params: { from?: string; to?: string } = {};
@@ -266,7 +270,7 @@ export default function Reportes() {
         aria-label="tabs-reportes"
         onActiveTabChange={(i) => go(indexToMode(i))}
       >
-        <Tabs.Item title="Resumen" active={mode === "resumen"} />
+        {/* <Tabs.Item title="Resumen" active={mode === "resumen"} /> */}
         <Tabs.Item title="Uso global" active={mode === "global"} />
         <Tabs.Item title="Inventario" active={mode === "inventario"} />
       </Tabs>
@@ -389,7 +393,7 @@ export default function Reportes() {
         </div>
       </Card>
 
-      {/* RESUMEN (bitácora personal) */}
+      {/* RESUMEN (bitácora personal) 
       {mode === "resumen" && (
         <Card>
           <p className="text-sm text-gray-500 mb-2">
@@ -437,6 +441,7 @@ export default function Reportes() {
           </Table>
         </Card>
       )}
+      */}
 
       {/* USO GLOBAL */}
       {mode === "global" && (
