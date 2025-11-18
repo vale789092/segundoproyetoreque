@@ -16,7 +16,7 @@ type Props = { labId: string };
 export default function EquiposTab({ labId }: Props) {
   const me = (getUser() ?? {}) as { rol?: "estudiante"|"profesor"|"tecnico"|"admin" };
   const canRequest = me?.rol === "estudiante" || me?.rol === "profesor"; // solo estos ven el CTA
-  const canManage = me.rol === "admin";
+  const canManage = me.rol === "admin" || me.rol === "tecnico";
 
   const [items, setItems] = React.useState<EquipoRow[]>([]);
   const [loading, setLoading] = React.useState(true);

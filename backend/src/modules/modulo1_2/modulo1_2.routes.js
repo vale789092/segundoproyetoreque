@@ -15,6 +15,11 @@ router.post("/:labId/horarios", requireRole(["admin"]),  H.createHorario);
 router.get("/:labId/horarios", H.listHorarios);
 router.patch("/:labId/horarios/:slotId", requireRole(["admin"]), H.updateHorario);
 router.delete("/:labId/horarios/:slotId", requireRole(["admin"]), H.deleteHorario);
+router.patch("/:labId/horarios/:slotId", H.updateHorario);
+router.delete("/:labId/horarios/:slotId", H.deleteHorario);
+router.get("/:labId/horarios/bloqueos", H.listBloqueos);
+router.post("/:labId/horarios/bloqueos", H.createBloqueo);
+router.delete("/:labId/horarios/bloqueos/:bloqueoId", H.deleteBloqueo);
 
 
 export default router;
