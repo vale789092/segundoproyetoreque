@@ -48,7 +48,7 @@ const Sidebar: React.FC = () => {
 
         <SimpleBar className="h-[calc(100vh_-_294px)]">
           <FB_Sidebar.Items className="px-5 mt-2">
-            {/* Botón Home destacado */}
+            {/* Botón Inicio destacado */}
             <FB_Sidebar.ItemGroup className="mb-3">
               <FB_Sidebar.Item
                 as={Link}
@@ -59,7 +59,7 @@ const Sidebar: React.FC = () => {
                     : "bg-lightprimary/70 text-primary hover:bg-lightprimary"
                 }`}
               >
-                Home
+                Inicio
               </FB_Sidebar.Item>
             </FB_Sidebar.ItemGroup>
 
