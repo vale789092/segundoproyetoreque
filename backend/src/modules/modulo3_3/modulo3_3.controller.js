@@ -91,6 +91,12 @@ export async function setStatusCtrl(req, res, next) {
       return send(res, 400, "Estado requerido");
     }
 
+    if (estado === "aprobada") {
+      const aprobadorId = req.user?.id || req.user?.sub || null;
+      await aprobarSolicitudDB(id, aprobadorId);  
+      return res.status(200).json({ id, estado: "aprobada" });
+    }
+
     const updated = await setStatus({
       id,
       estado,
