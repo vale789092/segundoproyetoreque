@@ -1,4 +1,4 @@
-import { AllShadows } from "templateArchive/shadows/AllShadows"
+import { AllShadows } from "@/shadows/AllShadows"
 
 
 const Shadow = () => {

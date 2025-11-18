@@ -1,4 +1,4 @@
-import BasicAlerts from "templateArchive/alerts/BasicAlerts"
+import BasicAlerts from "@/alerts/BasicAlerts"
 
 
 const Alerts = () => {

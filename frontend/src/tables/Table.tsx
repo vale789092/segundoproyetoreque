@@ -1,4 +1,4 @@
-import { ProductTable } from "templateArchive/tables/ProductTable"
+import { ProductTable } from "../../src/tables/ProductTable"
 
 
 const Table = () => {

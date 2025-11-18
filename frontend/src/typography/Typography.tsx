@@ -1,4 +1,4 @@
-import BasicTypography from "templateArchive/typography/BasicTypography"
+import BasicTypography from "@/typography/BasicTypography"
 
 
 const Typography = () => {
